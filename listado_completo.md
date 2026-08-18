@@ -4,5 +4,6 @@
 | anthony |
 | Maximiliano |
 | Gonzalo Posse |
-| Lucas   |
+| Lucas |
 | Thiago |
+| Guadalupe |
