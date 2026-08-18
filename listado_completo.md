@@ -1,15 +1,14 @@
-| Nombres |Ultimos 3 del DNI|
+| Nombres |
 | -----   |
 | Pablo   |
 | anthony |
 | Maximiliano |
 | Lucas   |
 | Gonzalo Posse |
-| Lucas   |
 | Guadalupe |
-| Guadalupe |
-|Ricardo Oliva| 531|
+| Ricardo Oliva |
 | Thiago |
 | Matias L |
 | Agustin P |
 | Matias Bressan |
+
