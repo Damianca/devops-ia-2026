@@ -3,7 +3,10 @@
 | Pablo   |
 | anthony |
 | Maximiliano |
-| Lucas   |
 | Gonzalo Posse |
+| Lucas   |
 | Guadalupe |
+| Thiago |
+| Matias L |
+| Agustin P |
 | Matias Bressan |
