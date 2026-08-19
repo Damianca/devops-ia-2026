@@ -12,5 +12,7 @@
 | Agustin P | |
 | Luciano | |
 | Pablo Santalucia | |
+| Diego Salcedo | 894 |
+| Fernando | |
 | Matias Lama | |
 | Matias Bressan | 952 |
