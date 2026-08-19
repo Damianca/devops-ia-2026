@@ -1,4 +1,3 @@
-
 | Nombres | Ultimos 3 del DNI |
 | :--- | :--- |
 | Pablo | |
@@ -14,3 +13,6 @@
 | Luciano | |
 | Pablo Santalucia | |
 | Diego Salcedo | 894 |
+| Fernando | |
+| Matias Lama | |
+| Matias Bressan | 952 |
