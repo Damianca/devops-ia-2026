@@ -13,5 +13,4 @@
 | Luciano | |
 | Pablo Santalucia | |
 | Fernando | |
-| Matias Lama | |
 | Matias Bressan | 952 |
