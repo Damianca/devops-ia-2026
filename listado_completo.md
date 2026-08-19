@@ -1,4 +1,3 @@
-
 | Nombres | Ultimos 3 del DNI |
 | :--- | :--- |
 | Pablo | |
@@ -13,4 +12,7 @@
 | Agustin P | |
 | Luciano | |
 | Pablo Santalucia | |
-| Fernando | |
+| Fernando | 536 |
+| Matias Lama | |
+| Matias Bressan | 952 |
+
