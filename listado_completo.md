@@ -1,14 +1,15 @@
-| Nombres |
-| -----   |
-| Pablo   |
-| anthony |
-| Maximiliano |
-| Lucas   |
-| Gonzalo Posse |
-| Guadalupe |
-| Ricardo Oliva |
-| Thiago |
-| Matias L |
-| Agustin P |
-| Matias Bressan |
-
+| Nombres | Ultimos 3 del DNI |
+| :--- | :--- |
+| Pablo | |
+| Anthony | |
+| Maximiliano | |
+| Lucas | |
+| Gonzalo Posse | |
+| Guadalupe | |
+| Ricardo Oliva | 531 |
+| Thiago | |
+| Matias L | |
+| Agustin P | |
+| Luciano | |
+| Pablo Santalucia | |
+| Matias Bressan | 952 |
