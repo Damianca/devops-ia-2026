@@ -10,9 +10,4 @@
 | Thiago | |
 | Matias L | |
 | Agustin P | |
-| Luciano | |
-| Pablo Santalucia | |
-| Fernando | |
-| Matias Bressan | 952 |
-| Diego Salcedo | 894 |
 | Diego Salcedo | 894 |
