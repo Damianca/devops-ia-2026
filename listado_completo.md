@@ -12,7 +12,14 @@
 | Agustin P | |
 | Luciano | |
 | Pablo Santalucia | |
+<<<<<<< HEAD
 | Fernando | 536 |
 | Matias Lama | |
 | Matias Bressan | 952 |
+=======
+| Fernando | |
+| Matias Bressan | 952 |
+| Tomas Hernandez | 291 |
+
+
 
