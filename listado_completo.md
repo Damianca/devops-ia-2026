@@ -11,7 +11,7 @@
 | Matias L | |
 | Agustin P | |
 | Luciano | 386 |
-| Pablo Santalucia | |
+| Pablo Santalucia | 605 |
 | Fernando | 536 |
 | Matias Lama | |
 | Matias Bressan | 952 |
