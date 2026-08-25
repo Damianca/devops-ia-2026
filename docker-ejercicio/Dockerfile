@@ -16,7 +16,7 @@ VOLUME /data
 # CMD ["tail", "-f", "/dev/null"]
 RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
 
-COPY menu.sh /menu.sh
-RUN chmod +x /menu.sh
+COPY menu.sh /menu_docker.sh
+RUN chmod +x /menu_docker.sh
 
-CMD ["/menu.sh"]
+CMD ["/menu_docker.sh"]
