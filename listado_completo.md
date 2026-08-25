@@ -1,3 +1,4 @@
+
 | Nombres | Ultimos 3 del DNI |
 | :--- | :--- |
 | Pablo | |
@@ -16,6 +17,4 @@
 | Matias Lama | |
 | Matias Bressan | 952 |
 | Tomas Hernandez | 291 |
-
-
 
