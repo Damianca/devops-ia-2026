@@ -15,8 +15,6 @@
 | Pablo Santalucia | 605 |
 | Fernando | 536 |
 | Matias Lama | |
-| Pablo Santalucia | |
-| Fernando | |
 | Matias Bressan | 952 |
 | Tomas Hernandez | 291 |
 
