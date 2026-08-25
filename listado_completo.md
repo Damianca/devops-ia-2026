@@ -10,7 +10,7 @@
 | Thiago | |
 | Matias L | |
 | Agustin P | |
-| Luciano | |
+| Luciano | 386 |
 | Pablo Santalucia | |
 | Fernando | 536 |
 | Matias Lama | |
