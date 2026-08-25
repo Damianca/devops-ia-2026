@@ -13,4 +13,10 @@ RUN mkdir /data
 VOLUME /data
 
 # Mantener el contenedor corriendo
-CMD ["tail", "-f", "/dev/null"]
+# CMD ["tail", "-f", "/dev/null"]
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+
+COPY menu.sh /menu.sh
+RUN chmod +x /menu.sh
+
+CMD ["/menu.sh"]
