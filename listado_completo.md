@@ -3,7 +3,7 @@
 | Pablo | |
 | Anthony | |
 | Maximiliano | |
-| Lucas | |
+| Lucas | 760 |
 | Gonzalo Posse | |
 | Guadalupe | |
 | Ricardo Oliva | 531 |
@@ -12,12 +12,8 @@
 | Agustin P | |
 | Luciano | |
 | Pablo Santalucia | |
-<<<<<<< HEAD
 | Fernando | 536 |
 | Matias Lama | |
-| Matias Bressan | 952 |
-=======
-| Fernando | |
 | Matias Bressan | 952 |
 | Tomas Hernandez | 291 |
 
