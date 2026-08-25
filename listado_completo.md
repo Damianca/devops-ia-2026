@@ -2,7 +2,7 @@
 | Nombres | Ultimos 3 del DNI |
 | :--- | :--- |
 | Pablo | |
-| Anthony | |
+| Anthony | 374 |
 | Maximiliano | |
 | Lucas | 760 |
 | Gonzalo Posse | |
