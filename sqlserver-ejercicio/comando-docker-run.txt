@@ -1,0 +1,43 @@
+Ejecute los siguientes comandos, en orden, en la terminal de Ubuntu para poder levantar a SQLServer, en una primera terminal: 
+ 108  git checkout -b sql_dock_321
+  109  docker run -d   --name sqlserver_utn   -e "ACCEPT_EULA=Y"   -e "SA_PASSWORD=UTN_Bases2026!"   -p 1433:1433   mcr.microsoft.com/mssql/server:2022-latest
+  110  docker ps
+  111  dockerr logs sqlserver_utn
+  112  docker logs sqlserver_utn
+  113  docker images
+  114  docker stop ba4c8329f48f
+  115  docker ps
+  116  docker stop 4719384e33b5
+  117  docker rm 4719384e33b5
+  118  docker images
+  119  docker ps -a
+  120  docker rm ba4c8329f48f
+  121  docker pull mcr.microsoft.com/mssql/server:2022-latest
+  122  docker run -d   --name sqlserver_utn   -e "ACCEPT_EULA=Y"   -e "SA_PASSWORD=UTN_Bases2026!"   -p 1433:1433   mcr.microsoft.com/mssql/server:2022-latest
+  123  docker ps
+  124  docker logs sqlserver_utn
+  125  ls -l
+  126  git status
+  127  mkdir sqlserver-ejercicio
+  128  cd sqlserver-ejercicio/
+  129  nano README.md
+  130  nano comando-docker-run.txt
+  131  history
+
+En la segunda terminal ejecute solamente el comando: 
+   55  docker exec -it sqlserver_utn /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "UTN_Bases2026!" -C
+Para poder levantar el entorno SQL y conectarme.
+Una vez dentro ejecute los siguientes comandos sql: 
+CREATE DATABASE Prueba;
+GO
+USE Prueba;
+GO
+CREATE TABLE Alumnos (id INT PRIMARY KEY IDENTITY(1,1), nombre VARCHAR(100), dni VARCHAR(20));
+GO
+INSERT INTO Alumnos (nombre, dni) VALUES ('Gonzalo', '12345678');
+GO
+SELECT * FROM Alumnos;
+GO
+Exit
+
+Esos comando crearon una nueva Base de Datos llamada Prueba y una vez dentro cree una tabla Alumnos y le inserte un registro a modo de demostracion. Hay una imagen adjunta en classroom
