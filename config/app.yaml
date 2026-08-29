@@ -1,0 +1,3 @@
+ambiente: produccion
+modo_mantenimiento: false
+replicas: 3
