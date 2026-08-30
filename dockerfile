@@ -1,12 +1,14 @@
-FROM docker:cli
+FROM docker:dind
 
-RUN apk update && \
-    apk add --no-cache bash curl
+RUN apk add --no-cache bash
 
 WORKDIR /datos
 
-COPY ./menu.sh /datos/menu.sh
+COPY menu.sh /datos/menu.sh
 
-ENV DOCKER_HOST=unix:///var/run/docker.sock
 
-CMD ["bash", "menu.sh"]
+ENV DOCKER_TLS_CERTDIR=""
+ENV DOCKER_HOST=tcp://127.0.0.1:2375
+
+
+CMD ["sh", "-c", "dockerd --host=tcp://127.0.0.1:2375 & sleep 3 && bash /datos/menu.sh"]
