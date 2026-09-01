@@ -1,4 +1,3 @@
-  GNU nano 7.2              listado_completo.md                       
 | Nombres | Ultimos 3 del DNI |
 | :--- | :--- |
 | Pablo | |
