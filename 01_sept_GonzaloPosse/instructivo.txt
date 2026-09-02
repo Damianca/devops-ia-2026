@@ -1,0 +1,25 @@
+Primero creamos el archivo Dockerfile con el comando 'nano Dockerfile'
+Adentro del archivo colocamos los instructivos que estaban en la presentacion de la clase
+FROM debian:bookworm-slim
+LABEL maintainer="yo"
+RUN apt-get update && apt-get install -y --no-install-recommends apache2 && rm -rf /var/lib/apt/lists/*
+COPY . /var/www/html/
+EXPOSE 80
+CMD ["apachectl", "-D", "FOREGROUND"]
+
+Luego, creamos el archivo index.html (con ayuda de la IA hacemos una linda pagina html)
+nano index.html
+Descargamos una imagen que se llame cordoba.jpg con 'curl -L "https://picsum.photos/600/400" -o cordoba.jpg'
+
+Y ahora solo nos queda buildear y correr con los siguientes comandos
+docker build -t mi_apache:v1 .
+docker run -d --name apache_web -p 8080:80 mi_apache:v1
+
+Para verificar
+docker ps
+deberia mostrar apache_web como Up
+Despues desde el navegador buscamos localhost:8080
+o con un curl http://localhost:8080
+
+En la captura de pantalla podemos ver como nos quedo la pagina html con la imagen /home/GonzalOps/Escritorio/DevOps/clase18-8/devops-ia-2026/01_sept_GonzaloPosse/'Captura desde 2026-09-01 21-05-18.png'
+
