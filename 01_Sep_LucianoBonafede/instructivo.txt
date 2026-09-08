@@ -1,0 +1,16 @@
+Instrucciones para desplegar el servidor web estático (Actividad 2 - Clase 5)
+
+1. Construir la imagen de Docker:
+   docker build -t mi_apache_santafe:v1 .
+
+2. Levantar el contenedor utilizando un VOLUMEN:
+   Para que el contenedor lea los archivos locales en tiempo real, ejecutamos:
+   docker run -d --name web_santafe -p 8080:80 -v $(pwd):/var/www/html/ mi_apache_santafe:v1
+
+3. Verificar funcionamiento:
+   - Chequear que el contenedor esté activo: docker ps
+   - Acceder al sitio desde el navegador web en http://localhost:8080 o en terminal con 'curl http://localhost:8080'
+
+4. Demostración del comando 'docker cp':
+   Si no estuviéramos usando un volumen y quisiéramos actualizar la foto directamente dentro del contenedor en ejecución, usaríamos el siguiente comando:
+   docker cp santafe.jpg web_santafe:/var/www/html/santafe.jpg
