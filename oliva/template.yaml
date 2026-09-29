@@ -1,12 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Despliegue basico de una instancia EC2
 
+Parameters:
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+
 Resources:
   MiInstanciaEC2:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t2.micro
-      ImageId: ami-0c7217cdde317cfec
+      InstanceType: t3.micro
+      ImageId: !Ref LatestAmiId
       Tags:
         - Key: Name
           Value: MiInstanciaEC2
