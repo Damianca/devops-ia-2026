@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Ejercicio IaC - Aprovisionamiento basico de una instancia EC2 con CloudFormation.
+  Autor: Pablo Santalucia
+
+# ---------------------------------------------------------------------------
+# Parametros
+# ---------------------------------------------------------------------------
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t2.micro
+    Description: Tipo de instancia EC2 (capa gratuita).
+
+  AmiId:
+    # AMI fija: al2023-ami-2023.12.20260914.0-kernel-6.18-x86_64 (us-east-1)
+    Type: AWS::EC2::Image::Id
+    Default: ami-0e34b50e714a297f1
+    Description: ID de la AMI al2023-ami-2023.12.20260914.0-kernel-6.18-x86_64 en us-east-1.
+
+# ---------------------------------------------------------------------------
+# Region determinada: el stack solo se puede crear en us-east-1
+# ---------------------------------------------------------------------------
+Rules:
+  RegionPermitida:
+    Assertions:
+      - Assert: !Equals [!Ref "AWS::Region", us-east-1]
+        AssertDescription: Este template solo puede desplegarse en la region us-east-1 (N. Virginia).
+
+# ---------------------------------------------------------------------------
+# Recursos
+# ---------------------------------------------------------------------------
+Resources:
+  MiInstanciaEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      Tags:
+        - Key: Name
+          Value: DevOPS_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+# ---------------------------------------------------------------------------
+# Salidas
+# ---------------------------------------------------------------------------
+Outputs:
+  InstanceId:
+    Description: ID de la instancia creada
+    Value: !Ref MiInstanciaEC2
+  AvailabilityZone:
+    Description: Zona de disponibilidad de la instancia
+    Value: !GetAtt MiInstanciaEC2.AvailabilityZone
+  PublicIp:
+    Description: IP publica de la instancia
+    Value: !GetAtt MiInstanciaEC2.PublicIp
