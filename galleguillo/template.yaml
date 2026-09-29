@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Instancia EC2 con Amazon Linux 2023, equivalente al servidor web
+  del ejercicio de VPC (Taller de DevOps)
+
+Parameters:
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: ID de la subred pública donde va la instancia (ej. la subred /28 de us-east-1a)
+
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: ID del Security Group sg-web ya creado
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Nombre del par de claves para SSH (el mismo key-taller que ya usás)
+
+  IamInstanceProfile:
+    Type: String
+    Description: Nombre del perfil de instancia asociado al rol role-ec2-taller
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: t3.micro
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref IamInstanceProfile
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref SubnetId
+          GroupSet:
+            - !Ref SecurityGroupId
+          AssociatePublicIpAddress: true
+      Tags:
+        - Key: Name
+          Value: web-cfn
+
+Outputs:
+  InstancePublicIp:
+    Description: IP pública asignada a la instancia
+    Value: !GetAtt WebServerInstance.PublicIp
+
+  InstanceId:
+    Description: ID de la instancia creada
+    Value: !Ref WebServerInstance
