@@ -1,0 +1,12 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Mi primera instancia EC2 con CloudFormation
+
+Resources:
+  MiInstancia:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0b245cc5f82576748
+      InstanceType: t3.micro
+      Tags:
+        - Key: Name
+          Value: mi-primera-ec2
