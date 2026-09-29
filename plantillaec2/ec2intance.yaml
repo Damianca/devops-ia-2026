@@ -17,10 +17,11 @@ Resources:
       InstanceType: t3.micro
       SubnetId: subnet-0e76324a978f7922b
       SecurityGroupIds:
-        - !Ref MiSecurityGroup
+        - sg-07123c0fc2b8a336a
       IamInstanceProfile: rol-ec2-devops
-    UpdateReplacePolicy: Retain
-    DeletionPolicy: Retain
+      Tags:
+        - Key: Name
+          Value: mi-web-publica
 
   MiBaseDeDatosRDS:
     Type: AWS::RDS::DBInstance
