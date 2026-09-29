@@ -1,0 +1,28 @@
+ec2:
+  region: us-east-1
+  availability_zone: us-east-1a
+
+  instance:
+    type: t3.micro
+    ami: amazon-linux-2023-x86_64
+    key_name: devops2026-key
+    monitoring: false
+
+  network:
+    security_group:
+      inbound:
+      - name: SSH
+        protocol: tcp
+        port: 22
+        source: MY_IP/32
+      
+      - name: HTTP
+        protocol: tcp
+        port: 80
+        source: 0.0.0.0/0
+
+  storage:
+    root:
+      type: gp3
+      size_gb: 8
+      delete_on_termination: true
