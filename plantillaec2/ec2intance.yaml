@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template de CloudFormation para replicar la instancia EC2 y su configuración exacta.
+
+Resources:
+  MiInstanciaEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0e34b50e714a297f1
+      InstanceType: t3.micro
+      KeyName: thiagoclave
+      SubnetId: subnet-0e76324a978f7922b
+      SecurityGroupIds:
+        - sg-07123c0fc2b8a336a
+      IamInstanceProfile: rol-ec2-devops
+      Tags:
+        - Key: Name
+          Value: mi-web-publica
