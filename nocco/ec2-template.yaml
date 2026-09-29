@@ -4,10 +4,10 @@ Description: "Tarea CloudFormation - Instancia EC2 en region us-east-1 - Nocco"
 Parameters:
   TipoInstancia:
     Type: String
-    Default: t2.micro
+    Default: t3.micro
     AllowedValues:
-      - t2.micro
       - t3.micro
+      - t3.small
     Description: Tipo de instancia EC2 (capa gratuita)
 
 Resources:
