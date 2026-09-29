@@ -19,6 +19,8 @@ Resources:
       SecurityGroupIds:
         - !Ref MiSecurityGroup
       IamInstanceProfile: rol-ec2-devops
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
 
   MiBaseDeDatosRDS:
     Type: AWS::RDS::DBInstance
