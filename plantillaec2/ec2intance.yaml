@@ -27,7 +27,7 @@ Resources:
     Properties:
       DBInstanceIdentifier: mibase-postgres
       Engine: postgres
-      EngineVersion: "15.4"
+      EngineVersion: "15.5"
       DBInstanceClass: db.t3.micro
       AllocatedStorage: 20
       MasterUsername: postgresuser
