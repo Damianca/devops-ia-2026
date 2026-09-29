@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Ejercicio 1 - Primera instancia EC2 con CloudFormation
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  ExistingRoleName:
+    Type: String
+    Description: Nombre del rol de IAM ya existente
+  KeyName:
+    Type: String
+    Default: ""
+    Description: (Opcional) Key Pair para SSH
+
+Conditions:
+  HasKey: !Not [!Equals [!Ref KeyName, ""]]
+
+Resources:
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ExistingRoleName
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      KeyName: !If [HasKey, !Ref KeyName, !Ref "AWS::NoValue"]
+      Tags:
+        - Key: Name
+          Value: ejercicio1-cloudformation
+
+Outputs:
+  InstanceId:
+    Value: !Ref MyEC2Instance
+  PublicIp:
+    Value: !GetAtt MyEC2Instance.PublicIp
