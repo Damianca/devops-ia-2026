@@ -1,5 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
+
 Resources:
+
   MiSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -17,7 +19,7 @@ Resources:
       InstanceType: t3.micro
       SubnetId: subnet-0e76324a978f7922b
       SecurityGroupIds:
-        - sg-07123c0fc2b8a336a
+        - !GetAtt MiSecurityGroup.GroupId
       IamInstanceProfile: rol-ec2-devops
       Tags:
         - Key: Name
@@ -28,7 +30,7 @@ Resources:
     Properties:
       DBInstanceIdentifier: mibase-postgres
       Engine: postgres
-      EngineVersion: "15.5"
+      EngineVersion: "15.19"
       DBInstanceClass: db.t3.micro
       AllocatedStorage: 20
       MasterUsername: postgresuser
