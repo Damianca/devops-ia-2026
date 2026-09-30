@@ -19,7 +19,7 @@ Resources:
       InstanceType: t3.micro
       SubnetId: subnet-0e76324a978f7922b
       SecurityGroupIds:
-        - !GetAtt MiSecurityGroup.GroupId
+        - sg-07123c0fc2b8a336a
       IamInstanceProfile: rol-ec2-devops
       Tags:
         - Key: Name
