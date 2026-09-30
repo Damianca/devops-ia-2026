@@ -1,0 +1,148 @@
+{
+    "Changes": [
+        {
+            "Type": "Resource",
+            "ResourceChange": {
+                "Action": "Add",
+                "LogicalResourceId": "DBSecurityGroup",
+                "ResourceType": "AWS::EC2::SecurityGroup",
+                "Scope": [],
+                "Details": []
+            }
+        },
+        {
+            "Type": "Resource",
+            "ResourceChange": {
+                "Action": "Add",
+                "LogicalResourceId": "DBSubnetGroup",
+                "ResourceType": "AWS::RDS::DBSubnetGroup",
+                "Scope": [],
+                "Details": []
+            }
+        },
+        {
+            "Type": "Resource",
+            "ResourceChange": {
+                "Action": "Add",
+                "LogicalResourceId": "MyDB",
+                "ResourceType": "AWS::RDS::DBInstance",
+                "Scope": [],
+                "Details": []
+            }
+        },
+        {
+            "Type": "Resource",
+            "ResourceChange": {
+                "Action": "Modify",
+                "LogicalResourceId": "MyEC2Instance",
+                "PhysicalResourceId": "i-0e0d3257d9b7c7abd",
+                "ResourceType": "AWS::EC2::Instance",
+                "Replacement": "Conditional",
+                "Scope": [
+                    "Properties"
+                ],
+                "Details": [
+                    {
+                        "Target": {
+                            "Attribute": "Properties",
+                            "Name": "SecurityGroupIds",
+                            "RequiresRecreation": "Conditionally"
+                        },
+                        "Evaluation": "Static",
+                        "ChangeSource": "ResourceAttribute",
+                        "CausingEntity": "SSHSecurityGroup.GroupId"
+                    },
+                    {
+                        "Target": {
+                            "Attribute": "Properties",
+                            "Name": "SecurityGroupIds",
+                            "RequiresRecreation": "Conditionally"
+                        },
+                        "Evaluation": "Dynamic",
+                        "ChangeSource": "DirectModification"
+                    },
+                    {
+                        "Target": {
+                            "Attribute": "Properties",
+                            "Name": "Tags",
+                            "RequiresRecreation": "Never"
+                        },
+                        "Evaluation": "Static",
+                        "ChangeSource": "DirectModification"
+                    }
+                ]
+            }
+        },
+        {
+            "Type": "Resource",
+            "ResourceChange": {
+                "Action": "Add",
+                "LogicalResourceId": "SSHSecurityGroup",
+                "ResourceType": "AWS::EC2::SecurityGroup",
+                "Scope": [],
+                "Details": []
+            }
+        },
+        {
+            "Type": "Resource",
+            "ResourceChange": {
+                "Action": "Add",
+                "LogicalResourceId": "SecondSubnet",
+                "ResourceType": "AWS::EC2::Subnet",
+                "Scope": [],
+                "Details": []
+            }
+        }
+    ],
+    "ChangeSetName": "agrega-sg-rds",
+    "ChangeSetId": "arn:aws:cloudformation:us-east-1:556796707279:changeSet/agrega-sg-rds/a7a81b94-781f-4b6d-9e6d-aaf905e1b261",
+    "StackId": "arn:aws:cloudformation:us-east-1:556796707279:stack/ejercicio-Apellido/d665abc0-bc57-11f1-85b7-0affedf3e03d",
+    "StackName": "ejercicio-Apellido",
+    "Description": null,
+    "Parameters": [
+        {
+            "ParameterKey": "DBUser",
+            "ParameterValue": "postgresadmin"
+        },
+        {
+            "ParameterKey": "DBPassword",
+            "ParameterValue": "****"
+        },
+        {
+            "ParameterKey": "VpcId",
+            "ParameterValue": "vpc-028bda0f315f335cd"
+        },
+        {
+            "ParameterKey": "InstanceType",
+            "ParameterValue": "t3.micro"
+        },
+        {
+            "ParameterKey": "LatestAmiId",
+            "ParameterValue": "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64",
+            "ResolvedValue": "ami-0b245cc5f82576748"
+        },
+        {
+            "ParameterKey": "MyIP",
+            "ParameterValue": "181.30.229.201/32"
+        }
+    ],
+    "CreationTime": "2026-09-30T00:33:34.217000+00:00",
+    "ExecutionStatus": "AVAILABLE",
+    "Status": "CREATE_COMPLETE",
+    "StatusReason": null,
+    "NotificationARNs": [],
+    "RollbackConfiguration": {},
+    "Capabilities": [],
+    "Tags": null,
+    "ParentChangeSetId": null,
+    "IncludeNestedStacks": false,
+    "RootChangeSetId": null,
+    "OnStackFailure": null,
+    "ImportExistingResources": null,
+    "StackDriftStatus": null,
+    "DeploymentMode": null,
+    "DeploymentConfig": {
+        "Mode": "STANDARD",
+        "DisableRollback": false
+    }
+}

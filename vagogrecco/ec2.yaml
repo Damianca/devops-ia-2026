@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Ejercicio 1 - Primera instancia EC2
+Description: Ejercicio 2 - EC2 + Security Group + RDS PostgreSQL
 
 Parameters:
   InstanceType:
@@ -8,18 +8,88 @@ Parameters:
   LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  MyIP:
+    Type: String
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/32$'
+  DBUser:
+    Type: String
+    Default: postgresadmin
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
 
 Resources:
+  SecondSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VpcId
+      CidrBlock: 172.31.0.0/20
+      AvailabilityZone: us-east-1a
+      Tags:
+        - Key: Name
+          Value: subnet-rds-VagoGrecco
+
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SSH solo desde mi IP
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIP
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: PostgreSQL solo desde la instancia EC2
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !GetAtt SSHSecurityGroup.GroupId
+
   MyEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref InstanceType
       SubnetId: subnet-0c923b6df0d98a7d7
+      SecurityGroupIds:
+        - !GetAtt SSHSecurityGroup.GroupId
       Tags:
         - Key: Name
-          Value: ejercicio1-VagoGrecco
+          Value: ejercicio2-VagoGrecco
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets para RDS
+      SubnetIds:
+        - subnet-0c923b6df0d98a7d7
+        - !Ref SecondSubnet
+
+  MyDB:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      Engine: postgres
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      MasterUsername: !Ref DBUser
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+      PubliclyAccessible: false
 
 Outputs:
   InstanceId:
     Value: !Ref MyEC2Instance
+  DBEndpoint:
+    Value: !GetAtt MyDB.Endpoint.Address
