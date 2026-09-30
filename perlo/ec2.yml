@@ -260,7 +260,7 @@ Resources:
 
       ImageId: ami-0b245cc5f82576748
 
-      InstanceType: t2.micro
+      InstanceType: t3.micro
 
       KeyName: !Ref KeyName
 

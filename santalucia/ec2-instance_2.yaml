@@ -1,0 +1,292 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Ejercicio IaC - Instancia EC2 en una VPC propia (VPC_DevOps_Clase8),
+  con Security Group para SSH restringido y base de datos RDS PostgreSQL.
+  Autor: Pablo Santalucia
+
+# ---------------------------------------------------------------------------
+# Parametros
+# ---------------------------------------------------------------------------
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t2.micro
+    Description: Tipo de instancia EC2 (capa gratuita).
+
+  AmiId:
+    # AMI fija: al2023-ami-2023.12.20260914.0-kernel-6.18-x86_64 (us-east-1)
+    Type: AWS::EC2::Image::Id
+    Default: ami-0e34b50e714a297f1
+    Description: ID de la AMI al2023-ami-2023.12.20260914.0-kernel-6.18-x86_64 en us-east-1.
+
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: Rango de IPs de la VPC.
+
+  SubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: Rango de IPs de la subred publica (EC2).
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 10.0.11.0/24
+    Description: Rango de IPs de la subred privada 1 (RDS).
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 10.0.12.0/24
+    Description: Rango de IPs de la subred privada 2 (RDS).
+
+  MyIp:
+    Type: String
+    Description: Tu IP publica en formato CIDR /32 (ej. 181.10.20.30/32). Unica IP habilitada para SSH.
+    AllowedPattern: ^(\d{1,3}\.){3}\d{1,3}/32$
+    ConstraintDescription: Debe ser una IP en formato x.x.x.x/32.
+
+  DBUsername:
+    Type: String
+    Default: dbadmin
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: ^[a-zA-Z][a-zA-Z0-9]*$
+    Description: Usuario administrador de PostgreSQL.
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 41
+    AllowedPattern: ^[a-zA-Z0-9]*$
+    Description: Password del usuario administrador (8 a 41 caracteres alfanumericos).
+
+# ---------------------------------------------------------------------------
+# Region determinada: el stack solo se puede crear en us-east-1
+# ---------------------------------------------------------------------------
+Rules:
+  RegionPermitida:
+    Assertions:
+      - Assert: !Equals [!Ref "AWS::Region", us-east-1]
+        AssertDescription: Este template solo puede desplegarse en la region us-east-1 (N. Virginia).
+
+# ---------------------------------------------------------------------------
+# Recursos
+# ---------------------------------------------------------------------------
+Resources:
+  # --- Red -----------------------------------------------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: IGW_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetCidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Subnet_Publica_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: RT_Publica_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # Subredes privadas para RDS (RDS exige al menos 2 zonas de disponibilidad).
+  # No tienen ruta a Internet: solo trafico interno de la VPC.
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: Subnet_Privada1_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: Subnet_Privada2_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  # --- Seguridad -----------------------------------------------------------
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SG_EC2_DevOps_Clase8
+      GroupDescription: SSH (22) permitido solo desde la IP del alumno
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIp
+          Description: SSH solo desde mi IP
+      Tags:
+        - Key: Name
+          Value: SG_EC2_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SG_RDS_DevOps_Clase8
+      GroupDescription: PostgreSQL (5432) permitido solo desde la instancia EC2
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+          Description: PostgreSQL desde el SG de la EC2
+      Tags:
+        - Key: Name
+          Value: SG_RDS_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  # --- Computo -------------------------------------------------------------
+  MiInstanciaEC2:
+    Type: AWS::EC2::Instance
+    DependsOn: DefaultRoute
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: DevOPS_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  # --- Base de datos -------------------------------------------------------
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: dbsubnetgroup-devops-clase8
+      DBSubnetGroupDescription: Subredes privadas para RDS PostgreSQL
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: DBSubnetGroup_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+  PostgresDB:
+    Type: AWS::RDS::DBInstance
+    # Para el ejercicio: al borrar el stack no se genera snapshot (evita costos).
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBInstanceIdentifier: rds-devops-clase8
+      Engine: postgres
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: "20"
+      StorageType: gp2
+      DBName: devopsclase8
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 0
+      Tags:
+        - Key: Name
+          Value: RDS_DevOps_Clase8
+        - Key: Curso
+          Value: DevOPS_Clase8
+
+# ---------------------------------------------------------------------------
+# Salidas
+# ---------------------------------------------------------------------------
+Outputs:
+  VpcId:
+    Description: ID de la VPC VPC_DevOps_Clase8
+    Value: !Ref VPC
+  SubnetId:
+    Description: ID de la subred publica
+    Value: !Ref PublicSubnet
+  InstanceId:
+    Description: ID de la instancia creada
+    Value: !Ref MiInstanciaEC2
+  AvailabilityZone:
+    Description: Zona de disponibilidad de la instancia
+    Value: !GetAtt MiInstanciaEC2.AvailabilityZone
+  PublicIp:
+    Description: IP publica de la instancia
+    Value: !GetAtt MiInstanciaEC2.PublicIp
+  EC2SecurityGroupId:
+    Description: Security Group de la EC2 (SSH solo desde MyIp)
+    Value: !Ref EC2SecurityGroup
+  DBEndpoint:
+    Description: Endpoint de la base PostgreSQL
+    Value: !GetAtt PostgresDB.Endpoint.Address
+  DBPort:
+    Description: Puerto de la base PostgreSQL
+    Value: !GetAtt PostgresDB.Endpoint.Port

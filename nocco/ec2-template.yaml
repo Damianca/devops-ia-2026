@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Tarea CloudFormation - EC2 + Security Group + RDS PostgreSQL en region us-east-1 - Nocco"
+
+Parameters:
+  TipoInstancia:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+    Description: Tipo de instancia EC2 (capa gratuita)
+  MiIP:
+    Type: String
+    Description: Mi IP publica para acceso SSH (formato x.x.x.x/32)
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: Contraseña del usuario admin de PostgreSQL
+
+Resources:
+  SGInstancia:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SSH solo desde mi IP
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MiIP
+
+  InstanciaTaller:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0b245cc5f82576748   # Amazon Linux 2023 - us-east-1
+      InstanceType: !Ref TipoInstancia
+      SecurityGroupIds:
+        - !GetAtt SGInstancia.GroupId
+      Tags:
+        - Key: Name
+          Value: ec2-cloudformation-nocco
+
+  SGBaseDatos:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: PostgreSQL solo desde la instancia EC2
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !GetAtt SGInstancia.GroupId
+
+  BaseDatos:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      DBInstanceIdentifier: db-nocco
+      Engine: postgres
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: "20"
+      StorageType: gp2
+      DBName: tallerdb
+      MasterUsername: dbadmin
+      MasterUserPassword: !Ref DBPassword
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 0
+      VPCSecurityGroups:
+        - !GetAtt SGBaseDatos.GroupId
+
+Outputs:
+  IdInstancia:
+    Description: ID de la instancia creada
+    Value: !Ref InstanciaTaller
+  EndpointBaseDatos:
+    Description: Direccion de conexion de PostgreSQL
+    Value: !GetAtt BaseDatos.Endpoint.Address
