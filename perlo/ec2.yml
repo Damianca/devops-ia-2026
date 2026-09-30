@@ -1,0 +1,399 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: Infraestructura DevOps - EC2 publica con servidor web y RDS MySQL privado
+
+# =========================================================
+# PARAMETROS
+# =========================================================
+
+Parameters:
+
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Key Pair existente para conectarse por SSH a la EC2
+
+  SSHLocation:
+    Type: String
+    Description: IP permitida para conectarse por SSH. Ejemplo 181.20.30.40/32
+
+  DBUsername:
+    Type: String
+    Default: admin
+    Description: Usuario administrador de MySQL
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: Password administrador de MySQL
+
+
+# =========================================================
+# RECURSOS
+# =========================================================
+
+Resources:
+
+  # =======================================================
+  # VPC
+  # =======================================================
+
+  DevOpsVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/26
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-vpc
+
+
+  # =======================================================
+  # SUBNETS PUBLICAS
+  # =======================================================
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevOpsVPC
+      CidrBlock: 10.0.0.0/28
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-public-1
+
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevOpsVPC
+      CidrBlock: 10.0.0.16/28
+      AvailabilityZone: us-east-1b
+      MapPublicIpOnLaunch: true
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-public-2
+
+
+  # =======================================================
+  # SUBNETS PRIVADAS
+  # =======================================================
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevOpsVPC
+      CidrBlock: 10.0.0.32/28
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: false
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-private-1
+
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DevOpsVPC
+      CidrBlock: 10.0.0.48/28
+      AvailabilityZone: us-east-1b
+      MapPublicIpOnLaunch: false
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-private-2
+
+
+  # =======================================================
+  # INTERNET GATEWAY
+  # =======================================================
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-igw
+
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref DevOpsVPC
+      InternetGatewayId: !Ref InternetGateway
+
+
+  # =======================================================
+  # TABLA DE RUTAS PUBLICA
+  # =======================================================
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DevOpsVPC
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-public-rt
+
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+
+  PublicSubnet1RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+
+  PublicSubnet2RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+
+  # =======================================================
+  # TABLA DE RUTAS PRIVADA
+  # =======================================================
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref DevOpsVPC
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-private-rt
+
+
+  PrivateSubnet1RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+
+  PrivateSubnet2RouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+
+  # =======================================================
+  # SECURITY GROUP WEB
+  # =======================================================
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+
+      GroupDescription: Acceso SSH y HTTP al servidor web
+
+      VpcId: !Ref DevOpsVPC
+
+      SecurityGroupIngress:
+
+        # SSH
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHLocation
+
+        # HTTP
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-sg-web
+
+
+  # =======================================================
+  # SECURITY GROUP MYSQL
+  # =======================================================
+
+  MySQLSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+
+      GroupDescription: Acceso MySQL solamente desde servidor web
+
+      VpcId: !Ref DevOpsVPC
+
+      SecurityGroupIngress:
+
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref WebSecurityGroup
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-sg-mysql
+
+
+  # =======================================================
+  # EC2 WEB
+  # =======================================================
+
+  EC2Perlo:
+    Type: AWS::EC2::Instance
+    Properties:
+
+      ImageId: ami-0b245cc5f82576748
+
+      InstanceType: t3.micro
+
+      KeyName: !Ref KeyName
+
+      SubnetId: !Ref PublicSubnet1
+
+      SecurityGroupIds:
+        - !Ref WebSecurityGroup
+
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+
+          dnf update -y
+
+          # Instalar servidor web Apache
+          dnf install -y httpd
+
+          # Instalar cliente para conectarse a MySQL
+          dnf install -y mariadb105
+
+          # Habilitar Apache al iniciar la instancia
+          systemctl enable httpd
+
+          # Iniciar Apache
+          systemctl start httpd
+
+          # Crear pagina web de prueba
+          echo "<html>" > /var/www/html/index.html
+          echo "<head><title>DevOps Perlo</title></head>" >> /var/www/html/index.html
+          echo "<body>" >> /var/www/html/index.html
+          echo "<h1>Servidor Web DevOps - Perlo</h1>" >> /var/www/html/index.html
+          echo "<p>EC2 creada mediante AWS CloudFormation</p>" >> /var/www/html/index.html
+          echo "</body>" >> /var/www/html/index.html
+          echo "</html>" >> /var/www/html/index.html
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-web
+
+
+  # =======================================================
+  # RDS - DB SUBNET GROUP
+  # =======================================================
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+
+      DBSubnetGroupDescription: Subnets privadas para RDS MySQL
+
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+      Tags:
+        - Key: Name
+          Value: devops-perlo-db-subnet-group
+
+
+  # =======================================================
+  # RDS MYSQL
+  # =======================================================
+
+  MySQLDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+
+      DBInstanceIdentifier: devops-perlo-mysql
+
+      Engine: mysql
+
+      DBInstanceClass: db.t3.micro
+
+      AllocatedStorage: 20
+
+      StorageType: gp3
+
+      MasterUsername: !Ref DBUsername
+
+      MasterUserPassword: !Ref DBPassword
+
+      DBSubnetGroupName: !Ref DBSubnetGroup
+
+      VPCSecurityGroups:
+        - !Ref MySQLSecurityGroup
+
+      PubliclyAccessible: false
+
+      Port: 3306
+
+      MultiAZ: false
+
+      BackupRetentionPeriod: 0
+
+      DeletionProtection: false
+
+
+# =========================================================
+# OUTPUTS
+# =========================================================
+
+Outputs:
+
+  VPCId:
+    Description: ID de la VPC creada
+    Value: !Ref DevOpsVPC
+
+
+  EC2InstanceId:
+    Description: ID de la instancia EC2
+    Value: !Ref EC2Perlo
+
+
+  EC2PublicIP:
+    Description: IP publica de la instancia EC2
+    Value: !GetAtt EC2Perlo.PublicIp
+
+
+  EC2PublicDNS:
+    Description: DNS publico de la instancia EC2
+    Value: !GetAtt EC2Perlo.PublicDnsName
+
+
+  WebsiteURL:
+    Description: URL del servidor web
+    Value: !Sub "http://${EC2Perlo.PublicDnsName}"
+
+
+  RDSEndpoint:
+    Description: Endpoint de RDS MySQL
+    Value: !GetAtt MySQLDatabase.Endpoint.Address
+
+
+  RDSPort:
+    Description: Puerto de RDS
+    Value: !GetAtt MySQLDatabase.Endpoint.Port
