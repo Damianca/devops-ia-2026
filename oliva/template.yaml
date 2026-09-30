@@ -1,17 +1,58 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Despliegue basico de una instancia EC2
+Description: EC2 con Security Group SSH restringido y RDS PostgreSQL
 
 Parameters:
   LatestAmiId:
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
 
+  MiIP:
+    Type: String
+    Default: '186.122.226.71/32'
+    Description: Direccion IPv4 autorizada para SSH
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Default: 'AdminDevOps2026!'
+    Description: Contrasena de la base de datos PostgreSQL
+
 Resources:
+  MiSecurityGroupSSH:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permite acceso SSH solo a mi IP
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MiIP
+      Tags:
+        - Key: Name
+          Value: SG-SSH-MiIP
+
   MiInstanciaEC2:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
       ImageId: !Ref LatestAmiId
+      SecurityGroupIds:
+        - !Ref MiSecurityGroupSSH
       Tags:
         - Key: Name
           Value: MiInstanciaEC2
+
+  MiBaseDeDatosRDS:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: devops-postgres-db
+      AllocatedStorage: '20'
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      MasterUsername: postgresadmin
+      MasterUserPassword: !Ref DBPassword
+      DBName: devopsdb
+      SkipFinalSnapshot: true
+      Tags:
+        - Key: Name
+          Value: RDS-PostgreSQL
