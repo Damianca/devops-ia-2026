@@ -21,6 +21,8 @@ Resources:
       SecurityGroupIds:
         - sg-07123c0fc2b8a336a
       IamInstanceProfile: rol-ec2-devops
+      MetadataOptions:
+        HttpTokens: required
       Tags:
         - Key: Name
           Value: mi-web-publica
