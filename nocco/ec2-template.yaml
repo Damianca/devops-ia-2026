@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Tarea CloudFormation - Instancia EC2 en region us-east-1 - Nocco"
+
+Parameters:
+  TipoInstancia:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+    Description: Tipo de instancia EC2 (capa gratuita)
+
+Resources:
+  InstanciaTaller:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0b245cc5f82576748   # Amazon Linux 2023 - us-east-1
+      InstanceType: !Ref TipoInstancia
+      Tags:
+        - Key: Name
+          Value: ec2-cloudformation-nocco
+
+Outputs:
+  IdInstancia:
+    Description: ID de la instancia creada
+    Value: !Ref InstanciaTaller

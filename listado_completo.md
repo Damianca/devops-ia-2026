@@ -1,9 +1,9 @@
 | Nombres | Ultimos 3 del DNI |
 | :--- | :--- |
 | Pablo | |
-| Anthony | |
+| Anthony | 374 |
 | Maximiliano | |
-| Lucas | |
+| Lucas | 760 |
 | Gonzalo Posse | |
 | Guadalupe | |
 | Ricardo Oliva | 531 |
@@ -12,7 +12,7 @@
 | Agustin P | |
 | Luciano | 386 |
 | Pablo Santalucia | 605 |
-| Fernando | |
+| Fernando | 536 |
+| Matias Lama | |
 | Matias Bressan | 952 |
 | Tomas Hernandez | 291 |
-
