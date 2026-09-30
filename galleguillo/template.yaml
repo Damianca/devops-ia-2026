@@ -24,6 +24,32 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
 
+  MyIp:
+    Type: String
+    Description: Tu IP pública en formato CIDR, ej. 186.108.202.70/32
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC donde se crea el nuevo Security Group
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC donde se crea el Security Group de RDS
+
+  PrivateSubnetIdA:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subred privada en us-east-1a (para el DBSubnetGroup)
+
+  PrivateSubnetIdB:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subred privada en us-east-1b (para el DBSubnetGroup, RDS exige 2 AZs)
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Contraseña del usuario administrador de PostgreSQL
+    MinLength: 8
+
 Resources:
   WebServerInstance:
     Type: AWS::EC2::Instance
@@ -37,10 +63,55 @@ Resources:
           SubnetId: !Ref SubnetId
           GroupSet:
             - !Ref SecurityGroupId
+            - !Ref SshSecurityGroup
           AssociatePublicIpAddress: true
       Tags:
         - Key: Name
           Value: web-cfn
+
+  SshSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permite SSH solo desde mi IP
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIp
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permite PostgreSQL solo desde sg-web
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref SecurityGroupId
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subredes privadas para RDS
+      SubnetIds:
+        - !Ref PrivateSubnetIdA
+        - !Ref PrivateSubnetIdB
+
+  PostgresInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: taller-postgres
+      Engine: postgres
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: '20'
+      MasterUsername: dbadmin
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      PubliclyAccessible: false
+      MultiAZ: false
 
 Outputs:
   InstancePublicIp:
@@ -50,3 +121,7 @@ Outputs:
   InstanceId:
     Description: ID de la instancia creada
     Value: !Ref WebServerInstance
+
+  RdsEndpoint:
+    Description: Endpoint de conexión a PostgreSQL
+    Value: !GetAtt PostgresInstance.Endpoint.Address
