@@ -1,0 +1,97 @@
+name: CI-CD - Terraform y web
+on:
+  pull_request:
+     branches: [develop]
+  push:
+     branches: [develop]
+  workflow_dispatch:
+     inputs:
+       operation:
+         description: Operacion
+         type: choice
+         options: [deploy, destroy]
+         default: deploy
+         required: true
+permissions:
+  contents: read
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+jobs:
+  ci:
+     runs-on: ubuntu-24.04
+     steps:
+       - uses: actions/checkout@v5
+       - uses: hashicorp/setup-terraform@v3
+         with:
+            terraform_version: 1.13.5
+            terraform_wrapper: false
+       - name: Formato y validacion de Terraform
+         run: |
+            terraform fmt -check -recursive
+            terraform -chdir=bootstrap init -backend=false
+            terraform -chdir=bootstrap validate
+            terraform -chdir=infra init -backend=false
+            terraform -chdir=infra validate
+       - name: Verificar scripts y generar HTML
+         run: |
+            bash -n scripts/deploy.sh infra/user-data.sh
+            python3 scripts/build.py
+       - uses: actions/upload-artifact@v4
+         with:
+            name: web-${{ github.sha }}
+            path: dist/index.html
+            retention-days: 7
+  cd:
+    needs: ci
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+       group: lab-web-aws
+       cancel-in-progress: false
+    env:
+       AWS_REGION: ${{ vars.AWS_REGION }}
+       STATE_BUCKET: ${{ vars.STATE_BUCKET }}
+       TF_VAR_region: ${{ vars.AWS_REGION }}
+       OPERATION: ${{ inputs.operation || 'deploy' }}
+    steps:
+       - uses: actions/checkout@v5
+       - uses: hashicorp/setup-terraform@v3
+         with:
+           terraform_version: 1.13.5
+           terraform_wrapper: false
+       - uses: aws-actions/configure-aws-credentials@v6.3.0
+         with:
+           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+           aws-region: ${{ vars.AWS_REGION }}
+           role-duration-seconds: 3600
+       - name: Inicializar state remoto
+         run: |
+           terraform -chdir=infra init \
+              -backend-config="bucket=$STATE_BUCKET" \
+              -backend-config="region=$AWS_REGION"
+       - uses: actions/download-artifact@v4
+         if: env.OPERATION == 'deploy'
+         with:
+           name: web-${{ github.sha }}
+           path: dist
+       - name: Plan de infraestructura
+         if: env.OPERATION == 'deploy'
+         run: terraform -chdir=infra plan -out=tfplan
+       - name: Crear o actualizar infraestructura
+         if: env.OPERATION == 'deploy'
+         run: terraform -chdir=infra apply -auto-approve tfplan
+       - name: Publicar y comprobar la web
+         if: env.OPERATION == 'deploy'
+         run: bash scripts/deploy.sh
+       - name: Plan de eliminacion
+         if: env.OPERATION == 'destroy'
+         run: terraform -chdir=infra plan -destroy -out=destroyplan
+       - name: Eliminar infraestructura del laboratorio
+         if: env.OPERATION == 'destroy'
+         run: terraform -chdir=infra apply -auto-approve destroyplan
+
