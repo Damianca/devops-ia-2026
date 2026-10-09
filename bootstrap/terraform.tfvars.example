@@ -1,0 +1,3 @@
+region         = "us-east-1"
+bucket_name    = "lab-cicd-TU-CUENTA-NOMBRE-UNICO"
+github_subject = "PEGAR_SUB_EXACTO_DEL_WORKFLOW_OIDC_EN_DEVELOP"
