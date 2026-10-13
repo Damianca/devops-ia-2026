@@ -1,3 +1,6 @@
-region         = "us-east-2"
+region         = "us-east-1"
 bucket_name    = "bucket-terraform-states-devops-bis"
 github_subject = "repo:Damianca@2234442/devops-ia-2026@1317392920:ref:refs/heads/develop"
+github_repo       = "Damianca/devops-ia-2026"
+github_branch     = "develop_POSSE"
+state_bucket_name = "tfstate-posse-cicd-2026"
