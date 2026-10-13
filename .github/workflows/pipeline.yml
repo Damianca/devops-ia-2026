@@ -68,13 +68,13 @@ jobs:
       id-token: write
 
     concurrency:
-      group: lab-web-aws
+      group: lab-web-aws-perlo
       cancel-in-progress: false
 
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      STATE_BUCKET: ${{ vars.STATE_BUCKET }}
-      TF_VAR_region: ${{ vars.AWS_REGION }}
+      AWS_REGION: ${{ vars.PERLO_AWS_REGION }}
+      STATE_BUCKET: ${{ vars.PERLO_STATE_BUCKET }}
+      TF_VAR_region: ${{ vars.PERLO_AWS_REGION }}
       OPERATION: ${{ inputs.operation || 'deploy' }}
 
     steps:
@@ -121,12 +121,12 @@ jobs:
           PYCODE
 
       - name: Mostrar role configurado
-        run: echo "AWS_ROLE_ARN=${{ vars.AWS_ROLE_ARN }}"
+        run: echo "AWS_ROLE_ARN=${{ vars.PERLO_AWS_ROLE_ARN }}"
 
       - uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ vars.PERLO_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.PERLO_AWS_REGION }}
           role-duration-seconds: 3600
 
       - name: Inicializar state remoto
