@@ -1,0 +1,48 @@
+name: 'Deploy Infra with Terraform'
+
+on:
+  push:
+    branches: [ "develop_TAVELLA" ]
+  pull_request:
+    branches: [ "develop_TAVELLA" ]
+
+jobs:
+  terraform:
+    name: 'Terraform Plan & Apply'
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Descargar el código del repositorio en el runner de GitHub
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. Configurar las credenciales de AWS usando secretos
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1 # Asegúrate de que coincida con la región de tu infra.tf
+
+    # 3. Instalar Terraform en el entorno de ejecución
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+
+    # 4. Inicializar Terraform (descarga los plugins de AWS y Random)
+    - name: Terraform Init
+      run: terraform init
+
+    # 5. Validar la sintaxis del código
+    - name: Terraform Validate
+      run: terraform validate
+
+    # 6. Crear el plan de Terraform (muestra qué cambios se aplicarán)
+    - name: Terraform Plan
+      run: terraform plan -input=false
+
+    # 7. Aplicar los cambios automáticamente solo si es un push a la rama 'main'
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/develop_TAVELLA' && github.event_name == 'push'
+      run: terraform apply -auto-approve -input=false
