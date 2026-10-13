@@ -1,24 +1,47 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Laboratorio CI/CD</title>
+  <title>Pipeline CI/CD - Posse</title>
   <style>
-    body { font-family: sans-serif; background: #eef3f8;
-           padding: 50px; color: #18334d; }
-    main { max-width: 750px; margin: auto; background: white;
-           padding: 35px; border-radius: 16px; }
-    code { background: #edf1f5; padding: 5px; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #1e293b;
+      padding: 2.5rem;
+      border-radius: 12px;
+      max-width: 600px;
+      text-align: center;
+    }
+    h1 { color: #38bdf8; }
+    .version {
+      font-family: monospace;
+      background: #0f172a;
+      padding: 0.75rem;
+      border-radius: 6px;
+      word-break: break-all;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Ejemplo de app con CI/CD</h1>
-    <p>GitHub Actions + Terraform + EC2 + Nginx.</p>
-    <p>Version desplegada: <code>__COMMIT__</code></p>
-    <p>Cambia este texto y observa el siguiente despliegue.</p>
-  </main>
+  <div class="card">
+    <h1>Hola desde mi pipeline CI/CD</h1>
+    <p>Página desplegada automáticamente con GitHub Actions, Terraform y SSM en AWS.</p>
+    <p>Autor: Gonzalo Posse</p>
+    <div class="version">
+      <p>Commit: __COMMIT__</p>
+      <p>Build: __FECHA__</p>
+    </div>
+  </div>
 </body>
 </html>
-
