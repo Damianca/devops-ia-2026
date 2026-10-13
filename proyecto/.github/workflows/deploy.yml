@@ -3,13 +3,13 @@ name: Validar y desplegar infraestructura
 
 on:
   push:
-    branches: [develop_Rosales]
+    branches: [develop_rosales]
     paths:
       - 'terraform/**'
       - 'web/**'
       - '.github/workflows/deploy.yml'
   pull_request:
-    branches: [develop_Rosales]
+    branches: [develop_rosales]
   workflow_dispatch:
 
 permissions:
