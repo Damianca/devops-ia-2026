@@ -1,0 +1,9 @@
+# CI/CD lab (vagogrecco)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+tfplan
+dist/
+*.pem
+.env
