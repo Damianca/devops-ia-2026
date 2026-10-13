@@ -1,8 +1,14 @@
-**/.terraform/*
-**/terraform.tfstate*
-**/terraform.tfvars
-**/tfplan
-**/destroyplan
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Claves y credenciales
+*.pem
+*.key
+.aws/
+
+# Artefactos generados
 dist/
-params.json
-response.html
