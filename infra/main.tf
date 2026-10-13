@@ -130,6 +130,9 @@ resource "aws_instance" "web" {
     dnf install -y nginx
     systemctl enable --now nginx
   EOF
+  lifecycle {
+    ignore_changes = [ami]
+  }
 
   tags = {
     Name = "${local.nombre}-web"
