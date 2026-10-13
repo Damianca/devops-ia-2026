@@ -27,6 +27,11 @@ variable "state_bucket_name" {
   type        = string
 }
 
+variable "github_subject" {
+  description = "Subject del token OIDC de GitHub para este repo y rama"
+  type        = string
+}
+
 # ---------- Bucket S3 para el state remoto ----------
 
 resource "aws_s3_bucket" "tfstate" {
@@ -79,7 +84,10 @@ resource "aws_iam_role" "github_actions" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/${var.github_branch}"
+          "token.actions.githubusercontent.com:sub" = [
+            "repo:${var.github_repo}:ref:refs/heads/${var.github_branch}",
+            var.github_subject
+          ]
         }
       }
     }]
