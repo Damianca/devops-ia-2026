@@ -64,7 +64,7 @@ jobs:
          with:
            terraform_version: 1.13.5
            terraform_wrapper: false
-         - name: Diagnosticar OIDC del job CD
+       - name: Diagnosticar OIDC del job CD
         shell: bash
          run: |
            python3 - <<'PYCODE'
