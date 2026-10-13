@@ -1,0 +1,88 @@
+
+name: Validar y desplegar infraestructura
+
+on:
+  push:
+    branches: [develop_Rosales]
+    paths:
+      - 'terraform/**'
+      - 'web/**'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches: [develop_Rosales]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate:
+    name: Validar Terraform
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Formato
+        run: terraform fmt -check -recursive
+
+      - name: Inicializar Terraform
+        run: terraform init -backend=false
+
+      - name: Validar configuración
+        run: terraform validate
+
+  deploy:
+    name: Crear EC2 y desplegar Nginx
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Configurar credenciales AWS mediante OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Inicializar Terraform
+        run: terraform init
+        env:
+          TF_IN_AUTOMATION: true
+
+      - name: Revisar cambios
+        run: terraform plan -out=tfplan
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+          TF_VAR_ami_id: ${{ vars.AMI_ID }}
+          TF_VAR_ssh_cidr: ${{ vars.SSH_CIDR }}
+
+      - name: Aplicar infraestructura
+        run: terraform apply -auto-approve tfplan
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+          TF_VAR_ami_id: ${{ vars.AMI_ID }}
+          TF_VAR_ssh_cidr: ${{ vars.SSH_CIDR }}
