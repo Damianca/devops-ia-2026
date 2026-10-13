@@ -1,0 +1,24 @@
+name: pipeline
+
+on:
+  pull_request:
+    branches: [develop_GALLEGUILLO]   # PR hacia la rama → corre CI
+  push:
+    branches: [develop_GALLEGUILLO]   # push a la rama → corre CI
+
+permissions:
+  contents: read   # el workflow solo necesita leer el repo
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest   # máquina virtual temporal que provee GitHub
+    steps:
+      - uses: actions/checkout@v4   # baja tu código a la máquina
+      - name: Validar scripts
+        run: shellcheck scripts/*.sh   # detecta errores en los .sh
+      - name: Preparar HTML y armar artefacto
+        run: bash scripts/prepare.sh   # copia el HTML y arma site.tar.gz
+      - uses: actions/upload-artifact@v4   # guarda el paquete para usarlo después
+        with:
+          name: site
+          path: site.tar.gz
