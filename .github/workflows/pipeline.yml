@@ -1,9 +1,9 @@
 name: CI-CD - Terraform y web
 on:
   pull_request:
-     branches: [develop]
+     branches: [develop_PERLO]
   push:
-     branches: [develop]
+     branches: [develop_PERLO]
   workflow_dispatch:
      inputs:
        operation:
@@ -44,7 +44,7 @@ jobs:
             retention-days: 7
   cd:
     needs: ci
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop_PERLO'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
