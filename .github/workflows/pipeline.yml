@@ -2,23 +2,124 @@ name: pipeline
 
 on:
   pull_request:
-    branches: [develop_GALLEGUILLO]   # PR hacia la rama → corre CI
+    branches: [develop_GALLEGUILLO]    # PR → solo CI
   push:
-    branches: [develop_GALLEGUILLO]   # push a la rama → corre CI
+    branches: [develop_GALLEGUILLO]    # push → CI + CD
+  workflow_dispatch:                   # manual → deploy o destroy
+    inputs:
+      action:
+        type: choice
+        options: [deploy, destroy]
+        default: deploy
 
+# id-token: write permite pedir el token OIDC a GitHub (entrar a AWS sin claves)
 permissions:
-  contents: read   # el workflow solo necesita leer el repo
+  id-token: write
+  contents: read
+
+# Un solo run a la vez por rama: evita pisar el state de Terraform
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  TF_VAR_artifacts_bucket: ${{ vars.GALLEGUILLO_TF_STATE_BUCKET }}   # Terraform lo lee como variable
 
 jobs:
   ci:
-    runs-on: ubuntu-latest   # máquina virtual temporal que provee GitHub
+    # En ejecución manual con "destroy" no hace falta validar nada
+    if: github.event_name != 'workflow_dispatch' || inputs.action == 'deploy'
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4   # baja tu código a la máquina
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+      - name: Validar Terraform (sin backend, no necesita AWS)
+        working-directory: terraform
+        run: |
+          terraform fmt -check -recursive   # falla si el código no está formateado
+          terraform init -backend=false     # descarga providers, sin tocar el state
+          terraform validate                # revisa sintaxis y referencias
       - name: Validar scripts
-        run: shellcheck scripts/*.sh   # detecta errores en los .sh
+        run: shellcheck scripts/*.sh
       - name: Preparar HTML y armar artefacto
-        run: bash scripts/prepare.sh   # copia el HTML y arma site.tar.gz
-      - uses: actions/upload-artifact@v4   # guarda el paquete para usarlo después
+        run: bash scripts/prepare.sh
+      - uses: actions/upload-artifact@v4
         with:
           name: site
           path: site.tar.gz
+
+  cd:
+    needs: ci   # si CI falla, este job NO corre
+    if: >
+      github.ref == 'refs/heads/develop_GALLEGUILLO' &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4   # el MISMO artefacto que generó CI
+        with:
+          name: site
+          path: .
+      - uses: aws-actions/configure-aws-credentials@v4   # entra a AWS vía OIDC
+        with:
+          role-to-assume: ${{ vars.GALLEGUILLO_AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+          terraform_wrapper: false   # así "terraform output -raw" devuelve texto limpio
+      - name: Init con state remoto
+        working-directory: terraform
+        run: terraform init -input=false -backend-config="bucket=${{ vars.GALLEGUILLO_TF_STATE_BUCKET }}"
+      - name: Plan
+        working-directory: terraform
+        run: terraform plan -input=false -out=tfplan   # guarda el plan en un archivo
+      - name: Apply (aplica exactamente el plan de arriba)
+        working-directory: terraform
+        run: terraform apply -input=false tfplan
+      - name: Leer outputs
+        id: tf
+        working-directory: terraform
+        run: |
+          echo "instance_id=$(terraform output -raw instance_id)" >> "$GITHUB_OUTPUT"
+          echo "ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+      - name: Publicar en EC2 por SSM
+        run: bash scripts/deploy.sh "${{ steps.tf.outputs.instance_id }}" "${{ vars.GALLEGUILLO_TF_STATE_BUCKET }}" "$GITHUB_SHA"
+      - name: Verificar por HTTP (la web debe ser igual al artefacto)
+        run: |
+          mkdir expected && tar xzf site.tar.gz -C expected   # desempaqueta lo que debería estar publicado
+          for i in $(seq 1 12); do
+            # compara lo que sirve Nginx con el index.html del artefacto
+            if curl -fsS "http://${{ steps.tf.outputs.ip }}" | diff -q - expected/index.html; then
+              echo "OK: http://${{ steps.tf.outputs.ip }}"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "La web no coincide con el artefacto"
+          exit 1
+
+  destroy:
+    if: >
+      github.ref == 'refs/heads/develop_GALLEGUILLO' &&
+      github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.GALLEGUILLO_AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+      - name: Init
+        working-directory: terraform
+        run: terraform init -input=false -backend-config="bucket=${{ vars.GALLEGUILLO_TF_STATE_BUCKET }}"
+      - name: Destroy
+        working-directory: terraform
+        run: terraform destroy -auto-approve -input=false
