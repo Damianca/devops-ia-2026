@@ -1,4 +1,3 @@
-# Incidente simulado: MODO_MANTENIMIENTO=true
-ambiente: desarrollo
-modo_mantenimiento: true
-replicas: 1
+ambiente: produccion
+modo_mantenimiento: false
+replicas: 3
