@@ -1,4 +1,3 @@
-
 output "public_ip" {
   description = "IP pública de la instancia"
   value       = aws_instance.web.public_ip
