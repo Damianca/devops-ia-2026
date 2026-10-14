@@ -61,6 +61,10 @@ jobs:
         with:
           terraform_version: 1.9.8
 
+      - name: Debug Role ARN
+        run: |
+          echo "Largo del ARN: ${{secrets.AWS_ROLE_ARN_ROSALES}}"
+
       - name: Configurar credenciales AWS mediante OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
