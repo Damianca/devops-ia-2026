@@ -1,3 +1,6 @@
 ambiente: produccion
 modo_mantenimiento: false
 replicas: 3
+
+# Control adicional del hotfix
+verificacion_postdespliegue: true
