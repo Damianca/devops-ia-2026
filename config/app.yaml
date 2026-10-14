@@ -1,3 +1,9 @@
 ambiente: produccion
 modo_mantenimiento: false
 replicas: 3
+
+# Ajuste docente simulado
+timeout_segundos: 30
+
+# Control adicional del hotfix
+verificacion_postdespliegue: true
