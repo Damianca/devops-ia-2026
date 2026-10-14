@@ -64,6 +64,11 @@ jobs:
         with:
           name: site
           path: .
+      - name: Debug - mostrar el sub real del token OIDC
+        run: |
+          # Pide a GitHub el token OIDC y muestra solo el campo "sub" (no es secreto)
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{sub, repository, ref, event_name}'
       - uses: aws-actions/configure-aws-credentials@v4   # entra a AWS vía OIDC
         with:
           role-to-assume: ${{ vars.GALLEGUILLO_AWS_ROLE_ARN }}
