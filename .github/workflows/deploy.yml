@@ -64,7 +64,7 @@ jobs:
       - name: Configurar credenciales AWS mediante OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN_rosales }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_ROSALES }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Inicializar Terraform
