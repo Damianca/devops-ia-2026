@@ -1,0 +1,1 @@
+variable   "roto"   { type=string }
