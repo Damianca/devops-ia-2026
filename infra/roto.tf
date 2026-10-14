@@ -1,1 +1,0 @@
-variable   "roto"   { type=string }
