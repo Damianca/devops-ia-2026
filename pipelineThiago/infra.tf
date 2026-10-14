@@ -143,15 +143,21 @@ resource "aws_instance" "web_server" {
     aws_s3_bucket_policy.public_read_policy,
   ]
 
-  user_data_replace_on_change = true
-  user_data                   = <<-EOF
+  user_data_replace_on_change = false
+  user_data = <<-EOF
     #!/bin/bash
-    # index hash: ${filemd5("${path.module}/index.html")}
     apt-get update -y
     apt-get install -y nginx curl
     systemctl enable --now nginx
-    curl -fsSL -o /var/www/html/index.html https://${aws_s3_bucket.web_bucket.bucket_regional_domain_name}/index.html
+
+    URL="https://${aws_s3_bucket.web_bucket.bucket_regional_domain_name}/index.html"
+    curl -fsSL -o /var/www/html/index.html "$URL"
+    echo "* * * * * root curl -fsSL -o /var/www/html/index.html $URL" > /etc/cron.d/sync-web
   EOF
+
+  lifecycle {
+    ignore_changes = [user_data]
+  }
 
   tags = {
     Name = "WebServer-S3-EC2"
