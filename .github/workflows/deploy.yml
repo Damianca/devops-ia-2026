@@ -85,5 +85,3 @@ jobs:
           TF_VAR_aws_region: ${{ vars.AWS_REGION }}
           TF_VAR_ami_id: ${{ vars.AMI_ID }}
           TF_VAR_ssh_cidr: ${{ vars.SSH_CIDR }}
-      - name: Probar si la variable llega
-        run: echo "El ARN es: ${{ vars.AWS_ROLE_ARN }}"
