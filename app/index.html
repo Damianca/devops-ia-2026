@@ -1,3 +1,4 @@
+cat > app/index.html <<'EOF'
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Laboratorio CI/CD - Ricardo Oliva</title>
   <style>
-    body { font-family: sans-serif; background: #cef3f0; padding: 50px; color: #10334d; }
-    main { max-width: 750px; margin: auto; background: white; padding: 35px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    body { font-family: sans-serif; background: #cef3f0; padding: 50px; color: #0a2540; }
+    main { max-width: 750px; margin: auto; background: white; padding: 35px; border-radius: 8px; }
     code { background: #edf1f5; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
     h1 { color: #0a2540; }
   </style>
@@ -15,8 +16,9 @@
   <main>
     <h1>Laboratorio CI/CD - Ricardo Oliva</h1>
     <p>Infraestructura automatizada con GitHub Actions, Terraform, EC2 y Nginx.</p>
-    <p>Versión actual: <strong>v1.0</strong></p>
+    <p>Versión actual: <strong>v2.0</strong></p>
     <p>Commit desplegado: <code>__COMMIT__</code></p>
   </main>
 </body>
 </html>
+EOF

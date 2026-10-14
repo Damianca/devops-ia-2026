@@ -64,17 +64,6 @@ jobs:
         with:
           terraform_version: 1.13.5
           terraform_wrapper: false
-      - name: Ver subject OIDC
-        run: |
-          python3 - <<'EOF'
-          import os, json, base64, urllib.request
-          url = os.environ['ACTIONS_ID_TOKEN_REQUEST_URL'] + '&audience=sts.amazonaws.com'
-          req = urllib.request.Request(url, headers={'Authorization': 'bearer ' + os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']})
-          t = json.load(urllib.request.urlopen(req))['value'].split('.')[1]
-          t += '=' * (-len(t) % 4)
-          c = json.loads(base64.urlsafe_b64decode(t))
-          print({k: c.get(k) for k in ['sub', 'aud', 'iss', 'repository', 'ref']})
-          EOF
       - uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           role-to-assume: ${{ vars.OLIVA_AWS_ROLE_ARN }}
