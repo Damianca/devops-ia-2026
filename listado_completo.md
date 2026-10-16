@@ -7,7 +7,7 @@
 | Gonzalo Posse | |
 | Guadalupe | |
 | Ricardo Oliva | 531 |
-| Thiago | |
+| Thiago | 585 |
 | Matias L | |
 | Agustin P | |
 | Luciano | 386 |
