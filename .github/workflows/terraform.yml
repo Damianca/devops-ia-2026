@@ -33,7 +33,7 @@ jobs:
       - run: terraform validate
         working-directory: infra
   deploy:
-    if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY'))    needs: validate
+        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
