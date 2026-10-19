@@ -1,0 +1,4 @@
+aws_region   = "us-east-1"
+github_owner = "TU_USUARIO"
+github_repo  = "devops-ia-2026"
+state_bucket = "lab-iac-state-TU-CUENTA-UNICO"
