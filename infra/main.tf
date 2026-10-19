@@ -6,7 +6,17 @@ data "aws_subnets" "default" {
     values = [data.aws_vpc.default.id]
   }
 }
-locals { name = "${var.project}-${var.environment}"; tags = { Project = var.project, Environment = var.environment, ManagedBy = "Terraform" } }
+
+locals {
+  name = "${var.project}-${var.environment}"
+
+  tags = {
+    Project     = var.project
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
 resource "aws_security_group" "web" {
   name_prefix = "${local.name}-web-"
   description = "HTTP limitado al CIDR del laboratorio"
