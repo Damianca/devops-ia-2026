@@ -31,7 +31,7 @@ variable "state_bucket" {
   type = string
 }
 
-# Bucket para almacenar el estado de Terraform
+# Bucket S3 para el estado de Terraform
 resource "aws_s3_bucket" "state" {
   bucket = var.state_bucket
 
