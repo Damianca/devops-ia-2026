@@ -26,8 +26,11 @@ resource "aws_security_group" "web" {
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = [var.http_cidr]
-  }  tags = merge(local.tags, { Name = "${local.name}-sg" })
-0}
+  }  
+  tags = merge(local.tags, {
+  Name = "${local.name}-sg"
+  })
+}
 resource "aws_instance" "web" {
   ami = data.aws_ssm_parameter.al2023.value
   instance_type = var.instance_type
