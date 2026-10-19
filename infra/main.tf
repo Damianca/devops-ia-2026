@@ -21,10 +21,13 @@ resource "aws_security_group" "web" {
   name_prefix = "${local.name}-web-"
   description = "HTTP limitado al CIDR del laboratorio"
   vpc_id = data.aws_vpc.default.id
-  ingress { from_port = 80; to_port = 80; protocol = "tcp"; cidr_blocks = [var.http_cidr] }
-  egress { from_port = 0; to_port = 0; protocol = "-1"; cidr_blocks = ["0.0.0.0/0"] }
-  tags = merge(local.tags, { Name = "${local.name}-sg" })
-}
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [var.http_cidr]
+  }  tags = merge(local.tags, { Name = "${local.name}-sg" })
+0}
 resource "aws_instance" "web" {
   ami = data.aws_ssm_parameter.al2023.value
   instance_type = var.instance_type
