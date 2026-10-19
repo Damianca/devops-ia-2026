@@ -35,8 +35,12 @@ resource "aws_instance" "web" {
   vpc_security_group_ids = [aws_security_group.web.id]
   associate_public_ip_address = true
   metadata_options { http_tokens = "required" }
-  root_block_device { encrypted = true; volume_size = 8; volume_type = "gp3" }
-  user_data = <<-EOF
+  root_block_device {
+    encrypted   = true
+    volume_size = 8
+    volume_type = "gp3"
+  }  
+    user_data = <<-EOF
     #!/bin/bash
     dnf install -y nginx
     echo '<h1>Infraestructura como codigo - ${local.name}</h1><p>Desplegado con Terraform y GitHub Actions</p>' > /usr/share/nginx/html/index.html
