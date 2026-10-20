@@ -82,7 +82,14 @@ jobs:
           terraform_wrapper: false
 
       - name: Ensure state bucket
-        run: echo "TF_STATE_BUCKET=$(bash scripts/ensure_state_bucket.sh)" >> "$GITHUB_ENV"
+        run: |
+          BUCKET_OUTPUT="$(bash scripts/ensure_state_bucket.sh)"
+          TF_STATE_BUCKET="${BUCKET_OUTPUT##*$'\n'}"
+          if [[ ! "$TF_STATE_BUCKET" =~ ^tfstate-[0-9]+-${AWS_REGION}$ ]]; then
+            echo "No se pudo obtener un nombre de bucket válido para Terraform" >&2
+            exit 1
+          fi
+          printf 'TF_STATE_BUCKET=%s\n' "$TF_STATE_BUCKET" >> "$GITHUB_ENV"
 
       - name: Terraform init
         run: terraform init -input=false -backend-config="bucket=$TF_STATE_BUCKET"
