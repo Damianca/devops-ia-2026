@@ -20,6 +20,10 @@ jobs:
         working-directory: ./pipelineThiago
 
     steps:
+      - name: Error temporal
+        run: exit 1
+
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
