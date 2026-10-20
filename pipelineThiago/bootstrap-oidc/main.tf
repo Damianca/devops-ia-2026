@@ -23,8 +23,8 @@ provider "aws" {
 
 variable "github_repo" {
   type        = string
-  description = "Repositorio en formato owner/repo"
-  default     = "Damianca/devops-ia-2026"
+  description = "Claim del repositorio en el formato OIDC de GitHub, incluyendo los IDs de owner y repo"
+  default     = "Damianca@2234442/devops-ia-2026@1317392920"
 }
 
 variable "branch" {
