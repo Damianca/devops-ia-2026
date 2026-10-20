@@ -43,7 +43,7 @@ fi
 
 # Script que se ejecuta dentro de la instancia (idempotente)
 REMOTE="$(cat <<EOS
-set -euo pipefail
+set -eu
 export AWS_DEFAULT_REGION=${REGION}
 export DEBIAN_FRONTEND=noninteractive
 if ! command -v aws > /dev/null 2>&1; then
