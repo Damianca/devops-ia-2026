@@ -1,10 +1,17 @@
+# Nombre mostrado en GitHub Actions.
 name: Terraform AWS - laboratorio
+
 on:
+  # Ejecuta el workflow en PRs que cambien infraestructura o este workflow.
   pull_request:
     paths: ['infra/**', '.github/workflows/terraform.yml']
+
+  # En push, solo para esta rama y si cambian esas rutas.
   push:
     branches: [develop_20oct26]
     paths: ['infra/**', '.github/workflows/terraform.yml']
+
+  # Permite iniciar manualmente apply o destroy desde la pestaña Actions.
   workflow_dispatch:
     inputs:
       operation:
@@ -16,51 +23,77 @@ on:
         description: "Para destroy escribir DESTROY"
         required: false
         type: string
+
+# Permisos mínimos globales; deploy agrega id-token para autenticación OIDC con AWS.
 permissions:
   contents: read
+
 jobs:
+  # Validaciones sin acceso al backend remoto ni despliegue.
   validate:
     runs-on: ubuntu-latest
     steps:
+      # Descarga el repositorio en el runner.
       - uses: actions/checkout@v4
+
+      # Instala la versión de Terraform usada por este workflow.
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.10.5'
+
+      # Comprueba el formato sin modificar archivos.
       - run: terraform fmt -check -recursive
         working-directory: infra
+
+      # Inicializa Terraform sin configurar el backend remoto.
       - run: terraform init -backend=false
         working-directory: infra
+
+      # Valida la configuración de Terraform.
       - run: terraform validate
         working-directory: infra
+
+  # Solo despliega en una ejecución manual:
+  # apply corre directamente; destroy exige escribir exactamente DESTROY.
   deploy:
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY')) }}
     needs: validate
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      id-token: write # Habilita OIDC para asumir el rol de AWS sin credenciales estáticas.
       contents: read
     concurrency:
-      group: terraform-lab-dev
-      cancel-in-progress: false
+      group: terraform-lab-dev # Evita ejecuciones simultáneas de este laboratorio.
+      cancel-in-progress: false # No cancela una ejecución que ya está en curso.
     defaults:
       run:
         working-directory: infra
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.10.5'
+
+      # Asume en AWS el rol indicado en el secret del repositorio/organización.
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
+
+      # Inicializa el backend remoto usando el bucket configurado como secret.
       - name: Init remoto
         run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="region=us-east-1"
+
+      # Genera y guarda el plan; destroy agrega -destroy al plan.
       - name: Plan
         env:
           TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME }}
           TF_VAR_http_cidr: ${{ vars.LAB_HTTP_CIDR }}
         run: terraform plan -out=tfplan ${{ github.event.inputs.operation == 'destroy' && '-destroy' || '' }}
+
+      # Aplica exactamente el plan guardado, sin pedir confirmación interactiva.
+      # Para destroy, la condición del job exige la confirmación DESTROY.
       - name: Apply del plan
         env:
           TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME }}
