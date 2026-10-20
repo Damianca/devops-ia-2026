@@ -5,7 +5,7 @@
 #   3. ejecuta en la instancia un comando que lo copia a /var/www/html
 #
 # Uso: deploy_html.sh <archivo> <bucket> <instance_id> <release_id>
-set -euo pipefail
+set -eu
 
 FILE="${1:?Falta el archivo a publicar}"
 BUCKET="${2:?Falta el bucket}"
