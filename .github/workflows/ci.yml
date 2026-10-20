@@ -1,0 +1,54 @@
+name: CI
+
+# CI: valida Terraform y los scripts, prepara el HTML y guarda el artefacto.
+# No usa credenciales de AWS.
+on:
+  pull_request:
+    branches: [ "develop_TAVELLA" ]
+  # Lo reutiliza cd.yml para construir el artefacto que después se despliega
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Validate & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./pipelineThiago
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate scripts (shellcheck + sintaxis)
+        run: |
+          shellcheck scripts/*.sh
+          for f in scripts/*.sh; do bash -n "$f"; done
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Terraform fmt
+        run: terraform fmt -check -diff
+
+      - name: Terraform init (sin backend)
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Prepare HTML
+        run: bash scripts/prepare_html.sh index.html dist "${GITHUB_SHA}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: pipelineThiago/dist
+          if-no-files-found: error
+          retention-days: 7

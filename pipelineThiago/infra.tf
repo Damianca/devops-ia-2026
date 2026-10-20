@@ -24,18 +24,13 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# Restringí SSH a tu IP, por ejemplo "190.x.x.x/32". Por defecto queda abierto.
-variable "ssh_cidr" {
-  type    = string
-  default = "0.0.0.0/0"
-}
-
-# 1. Sufijo aleatorio para que el nombre del S3 sea globalmente único
+# 1. Sufijo aleatorio para que el nombre del bucket sea globalmente único
 resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
 
-# 2. Bucket S3
+# 2. Bucket PRIVADO donde el pipeline deja los artefactos (releases/<sha>/index.html).
+#    La EC2 los descarga con su rol IAM; ya no hace falta acceso público.
 resource "aws_s3_bucket" "web_bucket" {
   bucket        = "mi-web-static-bucket-${random_id.bucket_suffix.hex}"
   force_destroy = true
@@ -49,43 +44,55 @@ resource "aws_s3_bucket_ownership_controls" "ownership" {
   }
 }
 
-# Acceso público de lectura (para que la EC2 descargue el archivo por HTTP)
 resource "aws_s3_bucket_public_access_block" "public_access" {
   bucket                  = aws_s3_bucket.web_bucket.id
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_policy" "public_read_policy" {
-  bucket     = aws_s3_bucket.web_bucket.id
-  depends_on = [aws_s3_bucket_public_access_block.public_access]
+# 3. Rol IAM para la EC2: SSM (para recibir comandos) + lectura de los artefactos
+data "aws_iam_policy_document" "ec2_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.web_bucket.arn}/*"
-      }
-    ]
-  })
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
 }
 
-# 3. Subir index.html local al bucket
-resource "aws_s3_object" "index_html" {
-  bucket       = aws_s3_bucket.web_bucket.id
-  key          = "index.html"
-  source       = "${path.module}/index.html"
-  etag         = filemd5("${path.module}/index.html")
-  content_type = "text/html"
+resource "aws_iam_role" "ec2_ssm" {
+  name               = "web-server-ssm-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
 }
 
-# 4. Security Group
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+  role       = aws_iam_role.ec2_ssm.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+data "aws_iam_policy_document" "artifact_read" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.web_bucket.arn}/releases/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "artifact_read" {
+  name   = "read-release-artifacts"
+  role   = aws_iam_role.ec2_ssm.id
+  policy = data.aws_iam_policy_document.artifact_read.json
+}
+
+resource "aws_iam_instance_profile" "web" {
+  name = "web-server-profile"
+  role = aws_iam_role.ec2_ssm.name
+}
+
+# 4. Security Group: solo HTTP (el acceso de administración es por SSM, sin SSH)
 resource "aws_security_group" "web_sg" {
   name        = "web-server-sg"
   description = "Permitir trafico HTTP y SSH"
@@ -96,14 +103,6 @@ resource "aws_security_group" "web_sg" {
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.ssh_cidr]
   }
 
   egress {
@@ -130,33 +129,28 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# 5. Instancia EC2 que descarga el HTML desde S3 y arranca Nginx
+# 5. Instancia EC2 con Nginx. El HTML NO lo maneja Terraform: lo publica el pipeline por SSM,
+#    así que cambiar el HTML nunca reemplaza la instancia ni cambia la IP.
 resource "aws_instance" "web_server" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t3.micro"
   vpc_security_group_ids      = [aws_security_group.web_sg.id]
+  iam_instance_profile        = aws_iam_instance_profile.web.name
   associate_public_ip_address = true
 
-  # Esperar a que el archivo y la política pública existan antes de arrancar
-  depends_on = [
-    aws_s3_object.index_html,
-    aws_s3_bucket_policy.public_read_policy,
-  ]
-
   user_data_replace_on_change = false
+
+  # Solo instala lo necesario; el contenido llega por SSM
   user_data = <<-EOF
     #!/bin/bash
     apt-get update -y
-    apt-get install -y nginx curl
+    apt-get install -y nginx curl awscli
     systemctl enable --now nginx
-
-    URL="https://${aws_s3_bucket.web_bucket.bucket_regional_domain_name}/index.html"
-    curl -fsSL -o /var/www/html/index.html "$URL"
-    echo "* * * * * root curl -fsSL -o /var/www/html/index.html $URL" > /etc/cron.d/sync-web
   EOF
 
+  # Evita reemplazos accidentales (nueva AMI de Ubuntu o cambios en el script de arranque)
   lifecycle {
-    ignore_changes = [user_data]
+    ignore_changes = [ami, user_data]
   }
 
   tags = {
@@ -166,7 +160,12 @@ resource "aws_instance" "web_server" {
 
 output "s3_bucket_name" {
   value       = aws_s3_bucket.web_bucket.id
-  description = "Nombre del bucket S3 creado"
+  description = "Bucket privado donde se guardan los artefactos"
+}
+
+output "instance_id" {
+  value       = aws_instance.web_server.id
+  description = "ID de la instancia EC2 (destino de los comandos SSM)"
 }
 
 output "instance_public_ip" {
