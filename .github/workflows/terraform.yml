@@ -1,0 +1,90 @@
+name: terraform
+
+on:
+  pull_request:
+    paths: ["infra/**", ".github/workflows/terraform.yml"]
+  push:
+    branches: [develop_Tavella_2]
+    paths: ["infra/**", ".github/workflows/terraform.yml"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Accion"
+        type: choice
+        options: [apply, destroy]
+        default: apply
+      confirm:
+        description: "Escribir DESTROY para confirmar destroy"
+        type: string
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-lab
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME_TAVELLA }}
+  TF_VAR_http_cidr: ${{ secrets.LAB_HTTP_CIDR_TAVELLA }}
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.10"
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.10"
+
+      - name: Autenticar con AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_TAVELLA_2 }}
+          aws-region: us-east-1
+
+      - name: Init
+        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET_TAVELLA }}"
+
+      - name: Validar confirmacion de destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: |
+          if [ "${{ inputs.confirm }}" != "DESTROY" ]; then
+            echo "Para destruir hay que escribir DESTROY en 'confirm'."
+            exit 1
+          fi
+
+      - name: Plan
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.action == 'destroy') }}
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Apply
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.action == 'destroy') }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: terraform destroy -input=false -auto-approve
