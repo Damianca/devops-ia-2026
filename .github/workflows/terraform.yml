@@ -18,7 +18,7 @@ on:
         description: "apply o destroy"
         required: true
         type: choice
-        options: [apply, destroy]
+        options: [plan, apply, destroy]
       confirmation:
         description: "Para destroy escribir DESTROY"
         required: false
@@ -64,7 +64,7 @@ jobs:
   # Solo despliega en una ejecución manual:
   # apply corre directamente; destroy exige escribir exactamente DESTROY.
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop_20oct26_PERLO' && (inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop_20oct26_PERLO' && (inputs.operation == 'plan' || inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY')) }}
     needs: validate
     runs-on: ubuntu-latest
     permissions:
@@ -103,6 +103,7 @@ jobs:
       # Aplica exactamente el plan guardado, sin pedir confirmación interactiva.
       # Para destroy, la condición del job exige la confirmación DESTROY.
       - name: Apply del plan
+        if: ${{ inputs.operation != 'plan' }}
         env:
           TF_VAR_bucket_name: ${{ inputs.bucket_name }}
           TF_VAR_http_cidr: ${{ inputs.http_cidr }}
