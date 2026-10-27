@@ -47,6 +47,10 @@ resource "aws_security_group" "web" {
   tags = merge(local.tags, {
     Name = "${local.name}-sg"
   })
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Servidor EC2 con Amazon Linux 2023 y Nginx
