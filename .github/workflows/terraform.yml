@@ -8,7 +8,7 @@ on:
 
   # En push, solo para esta rama y si cambian esas rutas.
   push:
-    branches: [develop_20oct26]
+    branches: [develop_20oct26_PERLO]
     paths: ['infra/**', '.github/workflows/terraform.yml']
 
   # Permite iniciar manualmente apply o destroy desde la pestaña Actions.
@@ -22,6 +22,14 @@ on:
       confirmation:
         description: "Para destroy escribir DESTROY"
         required: false
+        type: string
+      bucket_name:
+        description: "Nombre unico del bucket S3 de aplicacion"
+        required: true
+        type: string
+      http_cidr:
+        description: "IPv4 publica autorizada con /32"
+        required: true
         type: string
 
 # Permisos mínimos globales; deploy agrega id-token para autenticación OIDC con AWS.
@@ -56,14 +64,14 @@ jobs:
   # Solo despliega en una ejecución manual:
   # apply corre directamente; destroy exige escribir exactamente DESTROY.
   deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop_20oct26_PERLO' && (inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY')) }}
     needs: validate
     runs-on: ubuntu-latest
     permissions:
       id-token: write # Habilita OIDC para asumir el rol de AWS sin credenciales estáticas.
       contents: read
     concurrency:
-      group: terraform-lab-dev # Evita ejecuciones simultáneas de este laboratorio.
+      group: terraform-lab-perlo-20oct26 # Evita ejecuciones simultáneas de este laboratorio.
       cancel-in-progress: false # No cancela una ejecución que ya está en curso.
     defaults:
       run:
@@ -78,24 +86,24 @@ jobs:
       # Asume en AWS el rol indicado en el secret del repositorio/organización.
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::828035972737:role/lab-iac-perlo-20oct26-github
           aws-region: us-east-1
 
       # Inicializa el backend remoto usando el bucket configurado como secret.
       - name: Init remoto
-        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="region=us-east-1"
+        run: terraform init -backend-config="bucket=lab-cicd-maxiperlo-20261013" -backend-config="region=us-east-1"
 
       # Genera y guarda el plan; destroy agrega -destroy al plan.
       - name: Plan
         env:
-          TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME }}
-          TF_VAR_http_cidr: ${{ vars.LAB_HTTP_CIDR }}
+          TF_VAR_bucket_name: ${{ inputs.bucket_name }}
+          TF_VAR_http_cidr: ${{ inputs.http_cidr }}
         run: terraform plan -out=tfplan ${{ github.event.inputs.operation == 'destroy' && '-destroy' || '' }}
 
       # Aplica exactamente el plan guardado, sin pedir confirmación interactiva.
       # Para destroy, la condición del job exige la confirmación DESTROY.
       - name: Apply del plan
         env:
-          TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME }}
-          TF_VAR_http_cidr: ${{ vars.LAB_HTTP_CIDR }}
+          TF_VAR_bucket_name: ${{ inputs.bucket_name }}
+          TF_VAR_http_cidr: ${{ inputs.http_cidr }}
         run: terraform apply -auto-approve tfplan

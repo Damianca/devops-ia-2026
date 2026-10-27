@@ -1,4 +1,3 @@
-
 terraform {
   required_version = ">= 1.10.0"
 
@@ -19,69 +18,23 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-variable "github_owner" {
-  type = string
-}
-
-variable "github_repo" {
-  type = string
-}
-
 variable "state_bucket" {
   type = string
 }
 
-# Bucket S3 para el estado de Terraform
-resource "aws_s3_bucket" "state" {
-  bucket = var.state_bucket
-
-  tags = {
-    Project = "clase-iac"
-    Purpose = "terraform-state"
-  }
+# Proveedor OIDC existente: no se crea otro.
+data "aws_iam_openid_connect_provider" "github" {
+  arn = "arn:aws:iam::828035972737:oidc-provider/token.actions.githubusercontent.com"
 }
 
-resource "aws_s3_bucket_versioning" "state" {
-  bucket = aws_s3_bucket.state.id
-
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
-  bucket = aws_s3_bucket.state.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_public_access_block" "state" {
-  bucket = aws_s3_bucket.state.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-# Proveedor OIDC para GitHub Actions
-resource "aws_iam_openid_connect_provider" "github" {
-  url            = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
-}
-
-# Politica de confianza del rol IAM
+# Confianza exclusiva para nuestra rama.
 data "aws_iam_policy_document" "assume" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
     }
 
     condition {
@@ -94,20 +47,19 @@ data "aws_iam_policy_document" "assume" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:${var.github_owner}/${var.github_repo}:ref:refs/heads/develop_20oct26"
+        "repo:Damianca@2234442/devops-ia-2026@1317392920:ref:refs/heads/develop_20oct26_PERLO"
       ]
     }
   }
 }
 
 resource "aws_iam_role" "github" {
-  name               = "lab-iac-github-role"
+  name               = "lab-iac-perlo-20oct26-github"
   assume_role_policy = data.aws_iam_policy_document.assume.json
 }
 
-# Permisos para el laboratorio
 resource "aws_iam_role_policy" "lab" {
-  name = "lab-iac-policy"
+  name = "lab-iac-perlo-20oct26-policy"
   role = aws_iam_role.github.id
 
   policy = jsonencode({
@@ -116,17 +68,34 @@ resource "aws_iam_role_policy" "lab" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["ec2:*", "logs:*"]
+        Action   = ["ec2:*", "logs:*", "ssm:GetParameter"]
         Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket", "s3:GetBucketLocation"]
+        Resource = "arn:aws:s3:::${var.state_bucket}"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject"]
+        Resource = "arn:aws:s3:::${var.state_bucket}/clase/perlo-20oct26/terraform.tfstate"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::${var.state_bucket}/clase/perlo-20oct26/terraform.tfstate.tflock"
       },
       {
         Effect = "Allow"
         Action = ["s3:*"]
         Resource = [
-          aws_s3_bucket.state.arn,
-          "${aws_s3_bucket.state.arn}/*",
-          "arn:aws:s3:::lab-iac-*",
-          "arn:aws:s3:::lab-iac-*/*"
+          "arn:aws:s3:::lab-iac-perlo-*",
+          "arn:aws:s3:::lab-iac-perlo-*/*"
         ]
       }
     ]
@@ -138,5 +107,5 @@ output "role_arn" {
 }
 
 output "state_bucket" {
-  value = aws_s3_bucket.state.id
+  value = var.state_bucket
 }

@@ -53,7 +53,7 @@ resource "aws_security_group" "web" {
 resource "aws_instance" "web" {
   ami                         = data.aws_ssm_parameter.al2023.value
   instance_type               = var.instance_type
-  subnet_id                   = sort(data.aws_subnets.default.ids)[0]
+  subnet_id                   = "subnet-068d1f0f2688bc590"
   vpc_security_group_ids      = [aws_security_group.web.id]
   associate_public_ip_address = true
 

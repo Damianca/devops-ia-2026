@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "s3" {
-    key          = "clase/terraform.tfstate"
+    key          = "clase/perlo-20oct26/terraform.tfstate"
     use_lockfile = true
     encrypt      = true
   }
