@@ -44,6 +44,8 @@ Resources:
 
   MiBaseDeDatosRDS:
     Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       DBInstanceIdentifier: devops-postgres-db
       AllocatedStorage: '20'
@@ -52,7 +54,6 @@ Resources:
       MasterUsername: postgresadmin
       MasterUserPassword: !Ref DBPassword
       DBName: devopsdb
-      SkipFinalSnapshot: true
       Tags:
         - Key: Name
           Value: RDS-PostgreSQL
