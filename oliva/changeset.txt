@@ -1,0 +1,16 @@
+Change Set - Ejercicio 2: DB e Infraestructura
+Stack: oliva-cfn | Change Set: agrega-sg-y-rds | Region: us-east-1
+Comando: aws cloudformation describe-change-set --stack-name oliva-cfn --change-set-name agrega-sg-y-rds
+
+----------------------------------------------------------------------------
+|                            DescribeChangeSet                             |
++--------+----------------------+----------------------------+-------------+
+| Add    | MiBaseDeDatosRDS     | AWS::RDS::DBInstance       | None        |
+| Modify | MiInstanciaEC2       | AWS::EC2::Instance         | Conditional |
+| Add    | MiSecurityGroupSSH   | AWS::EC2::SecurityGroup    | None        |
++--------+----------------------+----------------------------+-------------+
+
+Resumen:
+- Add MiSecurityGroupSSH: Security Group con puerto 22 abierto solo a mi IP.
+- Add MiBaseDeDatosRDS: instancia RDS PostgreSQL db.t3.micro.
+- Modify MiInstanciaEC2: se le asigna el nuevo Security Group.
