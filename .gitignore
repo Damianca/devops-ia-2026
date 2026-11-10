@@ -1,0 +1,8 @@
+**/.terraform/*
+**/terraform.tfstate*
+**/terraform.tfvars
+**/tfplan
+**/destroyplan
+dist/
+params.json
+response.html

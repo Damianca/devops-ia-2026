@@ -1,0 +1,84 @@
+name: CI-CD Pipeline AWS
+
+on:
+  pull_request:
+    branches:
+      - develop_Hernandez
+  push:
+    branches:
+      - develop_Hernandez
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Accion a ejecutar'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  ci-validation:
+    name: Integracion Continua (CI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Validar sintaxis de Terraform
+        run: |
+          cd terraform-ec2
+          terraform init -backend=false
+          terraform validate
+
+      - name: Preparar artefacto HTML
+        run: |
+          mkdir -p build
+          cp index.html build/index.html
+
+      - name: Guardar artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-artifact
+          path: build/
+
+  cd-deployment:
+    name: Despliegue Continuo (CD)
+    needs: ci-validation
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codigo
+        uses: actions/checkout@v4
+
+      - name: Autenticacion AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Ejecutar Terraform Init y Apply
+        if: github.event.inputs.action != 'destroy'
+        run: |
+          cd terraform-ec2
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Ejecutar Terraform Destroy (Manual)
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          cd terraform-ec2
+          terraform init
+          terraform destroy -auto-approve
+

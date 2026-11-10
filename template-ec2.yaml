@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Taller DevOps - Ejercicio 1 EC2 Base
+
+Resources:
+  MyEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-06b21ccaeff8cd686
+      InstanceType: t3.micro
