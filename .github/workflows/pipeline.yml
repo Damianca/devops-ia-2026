@@ -72,13 +72,13 @@ jobs:
         if: github.event.inputs.action != 'destroy'
         run: |
           cd terraform-ec2
-          terraform init
+          terraform init -reconfigure
           terraform apply -auto-approve
 
       - name: Ejecutar Terraform Destroy (Manual)
         if: github.event.inputs.action == 'destroy'
         run: |
           cd terraform-ec2
-          terraform init
+          terraform init -reconfigure
           terraform destroy -auto-approve
 
