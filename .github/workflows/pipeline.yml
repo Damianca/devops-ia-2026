@@ -24,7 +24,7 @@ jobs:
   ci:
     name: CI
     if: github.event_name != 'workflow_dispatch' || inputs.action == 'deploy'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -52,3 +52,88 @@ jobs:
         with:
           name: web
           path: dist/
+
+  deploy:
+    name: CD
+    needs: ci
+    if: github.event_name != 'pull_request' && (github.event_name == 'push' || inputs.action == 'deploy')
+    runs-on: ubuntu-24.04
+    env:
+      BUCKET: taller-devops-tfstate-fernando
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web
+          path: dist/
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::556796707279:role/github-actions-cicd-vagogrecco
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform plan
+        run: terraform -chdir=terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: terraform -chdir=terraform apply -auto-approve tfplan
+
+      - name: Leer outputs
+        id: tf
+        run: |
+          echo "instance_id=$(terraform -chdir=terraform output -raw instance_id)" >> "$GITHUB_OUTPUT"
+          echo "public_ip=$(terraform -chdir=terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+
+      - name: Subir artefacto a S3
+        run: aws s3 cp dist/index.html "s3://${BUCKET}/cicd-lab-artifacts/${{ github.sha }}/index.html"
+
+      - name: Esperar a que SSM vea la instancia
+        run: |
+          for i in {1..30}; do
+            STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=${{ steps.tf.outputs.instance_id }}" \
+              --query 'InstanceInformationList[0].PingStatus' --output text)
+            echo "Intento $i: $STATUS"
+            [ "$STATUS" = "Online" ] && exit 0
+            sleep 10
+          done
+          echo "SSM no vio la instancia" && exit 1
+
+      - name: Publicar en EC2 via SSM
+        run: |
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "${{ steps.tf.outputs.instance_id }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[\"aws s3 cp s3://${BUCKET}/cicd-lab-artifacts/${{ github.sha }}/index.html /usr/share/nginx/html/index.html\",\"systemctl restart nginx\"]" \
+            --query 'Command.CommandId' --output text)
+          aws ssm wait command-executed \
+            --command-id "$CMD_ID" --instance-id "${{ steps.tf.outputs.instance_id }}"
+
+      - name: Verificar por HTTP
+        run: bash scripts/verify.sh "http://${{ steps.tf.outputs.public_ip }}" "${GITHUB_SHA:0:7}"
+
+  destroy:
+    name: Destroy
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::556796707279:role/github-actions-cicd-vagogrecco
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform -chdir=terraform init
+
+      - name: Terraform destroy
+        run: terraform -chdir=terraform destroy -auto-approve
