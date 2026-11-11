@@ -10,7 +10,7 @@ variable "project" {
 
 variable "environment" {
   type    = string
-  default = "qa"
+  default = "dev"
 }
 
 variable "instance_type" {
