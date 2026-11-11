@@ -31,6 +31,11 @@ variable "state_bucket" {
   type = string
 }
 
+variable "github_subject" {
+  type        = string
+  description = "sub exacto del token OIDC de GitHub para la rama del laboratorio"
+}
+
 # Bucket S3 para el estado de Terraform
 resource "aws_s3_bucket" "state" {
   bucket = var.state_bucket
@@ -69,9 +74,8 @@ resource "aws_s3_bucket_public_access_block" "state" {
 }
 
 # Proveedor OIDC para GitHub Actions
-resource "aws_iam_openid_connect_provider" "github" {
-  url            = "https://token.actions.githubusercontent.com"
-  client_id_list = ["sts.amazonaws.com"]
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
 }
 
 # Politica de confianza del rol IAM
@@ -81,7 +85,7 @@ data "aws_iam_policy_document" "assume" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
     }
 
     condition {
@@ -93,21 +97,19 @@ data "aws_iam_policy_document" "assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_owner}/${var.github_repo}:ref:refs/heads/develop_20oct26"
-      ]
+      values = [var.github_subject]
     }
   }
 }
 
 resource "aws_iam_role" "github" {
-  name               = "lab-iac-github-role"
+  name               = "lab-iac-galleguillo-github"
   assume_role_policy = data.aws_iam_policy_document.assume.json
 }
 
 # Permisos para el laboratorio
 resource "aws_iam_role_policy" "lab" {
-  name = "lab-iac-policy"
+  name = "lab-iac-galleguillo-policy"
   role = aws_iam_role.github.id
 
   policy = jsonencode({
@@ -116,7 +118,7 @@ resource "aws_iam_role_policy" "lab" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["ec2:*", "logs:*"]
+        Action   = ["ec2:*", "logs:*", "ssm:GetParameter"]
         Resource = "*"
       },
       {
