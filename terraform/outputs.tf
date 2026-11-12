@@ -7,3 +7,5 @@ output "public_ip" {
   description = "IP pública de la web"
   value       = aws_instance.web.public_ip
 }
+
+output   "fallo_controlado"   {  value = "x" }
