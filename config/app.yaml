@@ -1,4 +1,4 @@
 ambiente: produccion
-modo_mantenimiento: false
+modo_mantenimiento: true
 replicas: 3
 
