@@ -1,0 +1,18 @@
+# Terraform: state y planes NUNCA en Git
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+*.tfvars
+!*.tfvars.example
+
+# Build
+dist/
+site.tar.gz
+
+# Credenciales
+.env
+*.pem
+.aws/

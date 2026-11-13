@@ -1,0 +1,205 @@
+name: CI-CD - Terraform y web
+
+on:
+  pull_request:
+    branches: [develop_santalucia]
+  push:
+    branches: [develop_santalucia]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Operacion (develop_santalucia)"
+        type: choice
+        options: [deploy, destroy]
+        default: deploy
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: "1.13.5"
+  DEPLOY_BRANCH: develop_santalucia
+  TF_STATE_KEY: develop_santalucia/ec2-nginx/terraform.tfstate
+  TF_IN_AUTOMATION: "true"
+
+# Nunca dos ejecuciones de Terraform en paralelo sobre el mismo state
+concurrency:
+  group: tf-develop_santalucia-${{ github.event_name == 'pull_request' && github.event.number || 'deploy' }}
+  cancel-in-progress: false
+
+jobs:
+  # ------------------------------------------------------------------- CI
+  ci:
+    name: CI - validar y construir artefacto
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.operation == 'destroy') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      - name: terraform validate (infra)
+        working-directory: infra
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: terraform validate (bootstrap)
+        working-directory: bootstrap
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validar scripts y HTML
+        run: bash scripts/validate.sh
+
+      - name: Build del sitio
+        run: bash scripts/build.sh "${{ github.sha }}" "${{ github.head_ref || github.ref_name }}" "${{ github.run_number }}"
+
+      - name: Guardar artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # ------------------------------------------------------------------- CD
+  cd:
+    name: CD - plan, apply y deploy por SSM
+    needs: ci
+    if: >-
+      github.ref == 'refs/heads/develop_santalucia' &&
+      vars.SANTALUCIA_AWS_ROLE_ARN != '' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # necesario para OIDC
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.SANTALUCIA_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-${{ github.run_id }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false # para leer outputs limpios
+
+      - name: terraform init (backend S3)
+        working-directory: infra
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.SANTALUCIA_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_STATE_KEY }}" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: terraform plan
+        working-directory: infra
+        run: terraform plan -input=false -out=tfplan
+
+      - name: terraform apply
+        working-directory: infra
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Leer outputs
+        id: tf
+        working-directory: infra
+        run: |
+          {
+            echo "instance_id=$(terraform output -raw instance_id)"
+            echo "bucket=$(terraform output -raw artifacts_bucket)"
+            echo "url=$(terraform output -raw web_url)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Descargar el MISMO artefacto de CI
+        uses: actions/download-artifact@v4
+        with:
+          name: web-${{ github.sha }}
+          path: dist
+
+      - name: Subir artefacto a S3
+        run: |
+          tar -czf site.tar.gz -C dist .
+          aws s3 cp site.tar.gz "s3://${{ steps.tf.outputs.bucket }}/releases/${{ github.sha }}.tar.gz"
+
+      - name: Esperar agente SSM
+        run: bash scripts/wait-ssm.sh "${{ steps.tf.outputs.instance_id }}" 600
+
+      - name: Deploy por SSM
+        run: bash scripts/deploy-ssm.sh "${{ steps.tf.outputs.instance_id }}" "${{ steps.tf.outputs.bucket }}" "releases/${{ github.sha }}.tar.gz"
+
+      - name: Verificación HTTP
+        run: bash scripts/verify-http.sh "${{ steps.tf.outputs.url }}" "${{ github.sha }}" 30
+
+      - name: Resumen
+        run: |
+          {
+            echo "### Deploy OK"
+            echo "- URL: ${{ steps.tf.outputs.url }}"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Instancia: \`${{ steps.tf.outputs.instance_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # -------------------------------------------------------------- DESTROY
+  destroy:
+    name: Destroy - eliminar infraestructura del laboratorio
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.operation == 'destroy' &&
+      github.ref == 'refs/heads/develop_santalucia' &&
+      vars.SANTALUCIA_AWS_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Credenciales AWS por OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.SANTALUCIA_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-destroy-${{ github.run_id }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: infra
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.SANTALUCIA_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_STATE_KEY }}" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: terraform destroy
+        working-directory: infra
+        run: terraform destroy -input=false -auto-approve
+
+      - name: Verificar que no quedan recursos en el state
+        working-directory: infra
+        run: |
+          left=$(terraform state list | wc -l)
+          echo "Recursos en state: $left"
+          test "$left" -eq 0
+          {
+            echo "### Destroy OK"
+            echo "State vacío. Quedan del bootstrap: bucket de state, proveedor OIDC y rol IAM."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,7 @@
+# Copiar a terraform.tfvars (ignorado por Git) y completar.
+# Pegar el 'sub' EXACTO que imprime el workflow "OIDC - ver subject"
+# ejecutado desde develop_santalucia. En este repo tiene el formato:
+#   repo:Damianca@<id>/devops-ia-2026@<id>:ref:refs/heads/develop_santalucia
+github_subject       = "PEGAR_SUB_EXACTO"
+project              = "santalucia"
+create_oidc_provider = true # false si la cuenta ya tiene el proveedor OIDC de GitHub
