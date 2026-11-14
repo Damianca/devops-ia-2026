@@ -10,7 +10,7 @@ variable "environment" {
 
 variable "instance_type" {
   type    = string
-  default = "t3.small"
+  default = "t3.micro"
 }
 
 variable "log_retention_days" {
