@@ -1,0 +1,104 @@
+name: terraform-fmvg
+
+on:
+  pull_request:
+    paths: ["infra/**", ".github/workflows/terraform-fmvg.yml"]
+  push:
+    branches: [develop_20oct26_vagogrecco]
+    paths: ["infra/**", ".github/workflows/terraform-fmvg.yml"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Accion a ejecutar"
+        type: choice
+        options: [apply, destroy]
+        default: apply
+      confirm:
+        description: "Para destroy escribe DESTROY"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-lab-fmvg
+  cancel-in-progress: false
+
+env:
+  TF_VERSION: "1.10.5"
+  TF_IN_AUTOMATION: "true"
+  AWS_REGION: us-east-1
+  TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME_FMVG }}
+  TF_VAR_http_cidr: ${{ vars.LAB_HTTP_CIDR_FMVG }}
+
+defaults:
+  run:
+    working-directory: infra
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  deploy:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_FMVG }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: Init
+        run: terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET_FMVG }}"
+      - name: Plan
+        run: terraform plan -input=false -out=tfplan
+      - name: Resumen del plan
+        run: |
+          echo '### Terraform plan' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          terraform show -no-color tfplan >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Apply
+        run: terraform apply -input=false tfplan
+      - name: Outputs
+        run: terraform output
+
+  destroy:
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar confirmacion
+        working-directory: .
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "DESTROY" ]; then
+            echo "Debes escribir DESTROY para confirmar."; exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_FMVG }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET_FMVG }}"
+      - run: terraform destroy -auto-approve -input=false
