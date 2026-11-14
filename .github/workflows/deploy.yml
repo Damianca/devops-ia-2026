@@ -63,7 +63,7 @@ jobs:
 
       - name: Debug Role ARN
         run: |
-          echo "Largo del ARN: ${{secrets.AWS_ROLE_ARN_ROSALES}}"
+          echo "Largo del ARN: ${{vars.AWS_ROLE_ARN_ROSALES}}"
 
       - name: Configurar credenciales AWS mediante OIDC
         uses: aws-actions/configure-aws-credentials@v4
