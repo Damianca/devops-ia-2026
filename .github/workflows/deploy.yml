@@ -65,6 +65,18 @@ jobs:
         run: |
           echo "Largo del ARN: ${{vars.AWS_ROLE_ARN_ROSALES}}"
 
+      - name: Inspeccionar claims del Token OIDC
+        run: |
+          echo "Solicitando token OIDC a GitHub..."
+          TOKEN_RES=$(curl -s "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+          JWT=$(echo "$TOKEN_RES" | jq -r '.value')
+      
+          echo "Decodificando payload del JWT..."
+          PAYLOAD=$(echo "$JWT" | cut -d "." -f 2 | base64 -d 2>/dev/null || echo "$JWT" | cut -d "." -f 2 | tr '_-' '/+' | base64 -d 2>/dev/null)
+      
+          echo "=== CONTENIDO EXACTO DEL TOKEN ==="
+          echo "$PAYLOAD" | jq ."
+      
       - name: Configurar credenciales AWS mediante OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
