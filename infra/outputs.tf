@@ -13,3 +13,4 @@ output "data_bucket" {
 output "log_group" {
   value = aws_cloudwatch_log_group.app.name
 }
+# exp4: nuevo nombre de bucket
