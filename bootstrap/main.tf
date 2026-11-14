@@ -74,7 +74,7 @@ data "aws_iam_policy_document" "trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/${var.github_branch}"]
+      values   = [var.github_subject]
     }
   }
 }
@@ -103,4 +103,9 @@ output "role_arn" {
 
 output "state_bucket" {
   value = aws_s3_bucket.state.id
+}
+
+variable "github_subject" {
+  type        = string
+  description = "sub exacto del token OIDC de GitHub"
 }
