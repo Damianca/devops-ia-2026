@@ -52,6 +52,14 @@ resource "aws_instance" "web" {
   ami                    = "ami-0b245cc5f82576748"
   instance_type          = "t3.micro"
   vpc_security_group_ids = [aws_security_group.web_sg.id]
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y httpd
+              systemctl start httpd
+              systemctl enable httpd
+              echo "<h1>¡Hola desde Terraform y AWS!</h1>" > /var/www/html/index.html
+              EOF
 
   tags = {
     Name = "EC2-Desde-Terraform"
