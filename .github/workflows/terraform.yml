@@ -6,7 +6,7 @@ on:
     paths:
       - 'terraform/**'
       - 'web/**'
-      - '.github/workflows/deploy.yml'
+      - '.github/workflows/terraform.yml'
   pull_request:
     branches: [develop_rosales]
 
