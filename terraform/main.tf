@@ -58,7 +58,9 @@ resource "aws_instance" "web" {
               yum install -y httpd
               systemctl start httpd
               systemctl enable httpd
-              echo "<h1>¡Hola desde Terraform y AWS!</h1>" > /var/www/html/index.html
+              cat << 'INJECTED_HTML' > /var/www/html/index.html
+              ${file("${path.module}/../web/index.html")}
+              INJECTED_HTML
               EOF
 
   tags = {
