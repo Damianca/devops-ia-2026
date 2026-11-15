@@ -1,4 +1,5 @@
 # Incidente simulado: MODO_MANTENIMIENTO=true
 ambiente: desarrollo
 modo_mantenimiento: true
-replicas: 1
+replicas: 2
+puerto: 8080
