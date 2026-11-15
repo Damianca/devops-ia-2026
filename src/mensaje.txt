@@ -1,2 +1,3 @@
 Versión inicial en producción
 Cambio 1 desde develop (commit a importar)
+Cambio 2 en develop (no debe pasar a producción)
