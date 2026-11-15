@@ -9,7 +9,17 @@ on:
       - '.github/workflows/deploy.yml'
   pull_request:
     branches: [develop_rosales]
+
   workflow_dispatch:
+    inputs:
+      terraform_action:
+        description: 'Acción de Terraform a ejecutar'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
 
 permissions:
   contents: read
@@ -65,18 +75,6 @@ jobs:
         run: |
           echo "Largo del ARN: ${{vars.AWS_ROLE_ARN_ROSALES}}"
 
-      - name: Inspeccionar claims del Token OIDC
-        run: |
-          echo "Solicitando token OIDC a GitHub..."
-          TOKEN_RES=$(curl -s "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")
-          JWT=$(echo "$TOKEN_RES" | jq -r '.value')
-      
-          echo "Decodificando payload del JWT..."
-          PAYLOAD=$(echo "$JWT" | cut -d "." -f 2 | base64 -d 2>/dev/null || echo "$JWT" | cut -d "." -f 2 | tr '_-' '/+' | base64 -d 2>/dev/null)
-      
-          echo "=== CONTENIDO EXACTO DEL TOKEN ==="
-          echo "$PAYLOAD" | jq .
-      
       - name: Configurar credenciales AWS mediante OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -95,8 +93,19 @@ jobs:
           TF_VAR_ami_id: ${{ vars.AMI_ID }}
           TF_VAR_ssh_cidr: ${{ vars.SSH_CIDR }}
 
-      - name: Aplicar infraestructura
-        run: terraform apply -auto-approve tfplan
+      - name: Ejecutar Terraform (Apply o Destroy)
+        run: |
+          ACTION="${{ github.event.inputs.terraform_action }}"
+          if [ -z "$ACTION" ]; then
+            ACTION="apply"
+          fi
+
+          echo "Ejecutando terraform $ACTION..."
+          if [ "$ACTION" = "destroy" ]; then
+            terraform destroy -auto-approve
+          else
+            terraform apply -auto-approve tfplan
+          fi
         env:
           TF_VAR_aws_region: ${{ vars.AWS_REGION }}
           TF_VAR_ami_id: ${{ vars.AMI_ID }}
