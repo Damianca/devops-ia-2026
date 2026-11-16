@@ -12,7 +12,7 @@ variable "project" {
 variable "environment" {
   description = "Experimento B: dev -> qa"
   type        = string
-  default     = "dev"
+  default     = "qa"
 }
 
 variable "instance_type" {
