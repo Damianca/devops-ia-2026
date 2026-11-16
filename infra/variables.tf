@@ -18,7 +18,7 @@ variable "environment" {
 variable "instance_type" {
   description = "Experimento A: t3.micro -> t3.small"
   type        = string
-  default     = "t3.small"
+  default     = "t3.micro"
 }
 
 variable "bucket_name" {
