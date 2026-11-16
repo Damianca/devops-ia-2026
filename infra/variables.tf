@@ -44,5 +44,5 @@ variable "http_cidr" {
 variable "log_retention_days" {
   description = "Experimento C: 7 -> 14"
   type        = number
-  default     = 7
+  default     = 14
 }
