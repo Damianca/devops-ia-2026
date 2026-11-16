@@ -1,3 +1,9 @@
+###############################################################################
+# BOOTSTRAP - DevOPS_Clase11 (rama develop_20oct26_santalucia)
+# Se ejecuta UNA vez en la VM con el usuario IAM IaC_Terraform.
+# Crea: bucket de estado + IAM Role para GitHub Actions (OIDC).
+# El estado del bootstrap queda LOCAL: guardarlo y NO subirlo al repo.
+###############################################################################
 
 terraform {
   required_version = ">= 1.10.0"
@@ -12,6 +18,15 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project   = var.project
+      Owner     = "pablo-santalucia"
+      Component = "bootstrap"
+      ManagedBy = "Terraform"
+    }
+  }
 }
 
 variable "aws_region" {
@@ -19,24 +34,50 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
-variable "github_owner" {
-  type = string
-}
-
-variable "github_repo" {
-  type = string
+variable "project" {
+  description = "Prefijo obligatorio de nombres"
+  type        = string
+  default     = "DevOPS_Clase11"
 }
 
 variable "state_bucket" {
-  type = string
+  description = "Bucket del estado remoto (S3: solo minusculas, numeros y '-')"
+  type        = string
+
+  validation {
+    condition     = can(regex("^devops-clase11-[a-z0-9-]{3,48}$", var.state_bucket))
+    error_message = "Debe empezar con 'devops-clase11-' y usar solo minusculas, numeros y '-'."
+  }
 }
 
-# Bucket S3 para el estado de Terraform
+variable "github_subject" {
+  description = "Claim 'sub' exacto del token OIDC (este repo usa IDs de owner y repo)"
+  type        = string
+  default     = "repo:Damianca@2234442/devops-ia-2026@1317392920:ref:refs/heads/develop_20oct26_santalucia"
+
+  validation {
+    condition     = endswith(var.github_subject, ":ref:refs/heads/develop_20oct26_santalucia")
+    error_message = "El subject debe corresponder a la rama develop_20oct26_santalucia."
+  }
+}
+
+variable "create_oidc_provider" {
+  description = "false si la cuenta YA tiene el proveedor OIDC de GitHub (ej. creado en develop_santalucia)"
+  type        = bool
+  default     = false
+}
+
+locals {
+  oidc_url = "https://token.actions.githubusercontent.com"
+  oidc_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn
+}
+
+# --------------------------------------------------------- Bucket de estado
 resource "aws_s3_bucket" "state" {
   bucket = var.state_bucket
 
   tags = {
-    Project = "clase-iac"
+    Name    = "${var.project}-tfstate"
     Purpose = "terraform-state"
   }
 }
@@ -68,20 +109,27 @@ resource "aws_s3_bucket_public_access_block" "state" {
   restrict_public_buckets = true
 }
 
-# Proveedor OIDC para GitHub Actions
+# ------------------------------------------------------------ Proveedor OIDC
+# Solo puede existir UNO por cuenta: por defecto se reutiliza el existente.
 resource "aws_iam_openid_connect_provider" "github" {
-  url            = "https://token.actions.githubusercontent.com"
+  count          = var.create_oidc_provider ? 1 : 0
+  url            = local.oidc_url
   client_id_list = ["sts.amazonaws.com"]
 }
 
-# Politica de confianza del rol IAM
+data "aws_iam_openid_connect_provider" "github" {
+  count = var.create_oidc_provider ? 0 : 1
+  url   = local.oidc_url
+}
+
+# ------------------------------------------------- Rol para GitHub Actions
 data "aws_iam_policy_document" "assume" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [local.oidc_arn]
     }
 
     condition {
@@ -90,24 +138,27 @@ data "aws_iam_policy_document" "assume" {
       values   = ["sts.amazonaws.com"]
     }
 
+    # Solo mi rama puede asumir el rol
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_owner}/${var.github_repo}:ref:refs/heads/develop_20oct26"
-      ]
+      values   = [var.github_subject]
     }
   }
 }
 
 resource "aws_iam_role" "github" {
-  name               = "lab-iac-github-role"
+  name               = "${var.project}-github-role"
   assume_role_policy = data.aws_iam_policy_document.assume.json
+
+  tags = {
+    Name = "${var.project}-github-role"
+  }
 }
 
-# Permisos para el laboratorio
+# Permisos de laboratorio (amplios en EC2/Logs; reducir en produccion)
 resource "aws_iam_role_policy" "lab" {
-  name = "lab-iac-policy"
+  name = "${var.project}-lab-policy"
   role = aws_iam_role.github.id
 
   policy = jsonencode({
@@ -120,13 +171,18 @@ resource "aws_iam_role_policy" "lab" {
         Resource = "*"
       },
       {
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
+        Resource = "arn:aws:ssm:${var.aws_region}::parameter/aws/service/*"
+      },
+      {
         Effect = "Allow"
         Action = ["s3:*"]
         Resource = [
           aws_s3_bucket.state.arn,
           "${aws_s3_bucket.state.arn}/*",
-          "arn:aws:s3:::lab-iac-*",
-          "arn:aws:s3:::lab-iac-*/*"
+          "arn:aws:s3:::devops-clase11-*",
+          "arn:aws:s3:::devops-clase11-*/*"
         ]
       }
     ]
@@ -134,9 +190,11 @@ resource "aws_iam_role_policy" "lab" {
 }
 
 output "role_arn" {
-  value = aws_iam_role.github.arn
+  description = "-> variable de GitHub SANTALUCIA_CLASE11_ROLE_ARN"
+  value       = aws_iam_role.github.arn
 }
 
 output "state_bucket" {
-  value = aws_s3_bucket.state.id
+  description = "-> variable de GitHub SANTALUCIA_CLASE11_STATE_BUCKET"
+  value       = aws_s3_bucket.state.id
 }

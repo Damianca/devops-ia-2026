@@ -8,8 +8,9 @@ terraform {
     }
   }
 
+  # bucket y region se pasan con -backend-config
   backend "s3" {
-    key          = "clase/terraform.tfstate"
+    key          = "DevOPS_Clase11/infra/terraform.tfstate"
     use_lockfile = true
     encrypt      = true
   }

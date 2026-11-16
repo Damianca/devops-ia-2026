@@ -1,4 +1,11 @@
+# Copiar a terraform.tfvars (ignorado por Git)
 aws_region   = "us-east-1"
-github_owner = "TU_USUARIO"
-github_repo  = "devops-ia-2026"
-state_bucket = "lab-iac-state-TU-CUENTA-UNICO"
+project      = "DevOPS_Clase11"
+state_bucket = "devops-clase11-tfstate-santalucia"
+
+# Ya viene por defecto con el formato real de este repo (owner y repo con ID):
+# github_subject = "repo:Damianca@2234442/devops-ia-2026@1317392920:ref:refs/heads/develop_20oct26_santalucia"
+
+# false = reutiliza el proveedor OIDC que ya existe en la cuenta.
+# Si el plan falla con "no matching IAM OpenID Connect Provider", poner true.
+create_oidc_provider = false

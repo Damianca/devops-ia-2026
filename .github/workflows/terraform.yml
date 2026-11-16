@@ -1,70 +1,45 @@
-# Nombre mostrado en GitHub Actions.
+# Mismo archivo que en develop_20oct26: asi aparece el boton "Run workflow"
+# (workflow_dispatch) y se puede elegir la rama develop_20oct26_santalucia.
 name: Terraform AWS - laboratorio
 
 on:
-  # Ejecuta el workflow en PRs que cambien infraestructura o este workflow.
+  # PRs que cambien infraestructura o este workflow: solo validacion.
   pull_request:
     paths: ['infra/**', '.github/workflows/terraform.yml']
 
-  # En push, solo para esta rama y si cambian esas rutas.
+  # Push a MI rama: validate + plan + apply.
   push:
-    branches: [develop_20oct26]
+    branches: [develop_20oct26_santalucia]
     paths: ['infra/**', '.github/workflows/terraform.yml']
 
-  # Permite iniciar manualmente apply o destroy desde la pestaña Actions.
+  # Manual: plan, apply o destroy (destroy exige escribir DESTROY).
   workflow_dispatch:
     inputs:
       operation:
-        description: "apply o destroy"
+        description: "plan, apply o destroy"
         required: true
         type: choice
-        options: [apply, destroy]
+        options: [plan, apply, destroy]
       confirmation:
         description: "Para destroy escribir DESTROY"
         required: false
         type: string
 
-# Permisos mínimos globales; deploy agrega id-token para autenticación OIDC con AWS.
 permissions:
   contents: read
 
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: '1.10.5'
+  TF_IN_AUTOMATION: 'true'
+  # Variables del repo con prefijo propio para no pisar las de otros alumnos
+  TF_VAR_bucket_name: ${{ vars.SANTALUCIA_CLASE11_BUCKET_NAME }}
+  TF_VAR_http_cidr: ${{ vars.SANTALUCIA_CLASE11_HTTP_CIDR }}
+
 jobs:
-  # Validaciones sin acceso al backend remoto ni despliegue.
+  # ----------------------------- Validacion sin credenciales ni backend
   validate:
     runs-on: ubuntu-latest
-    steps:
-      # Descarga el repositorio en el runner.
-      - uses: actions/checkout@v4
-
-      # Instala la versión de Terraform usada por este workflow.
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.10.5'
-
-      # Comprueba el formato sin modificar archivos.
-      - run: terraform fmt -check -recursive
-        working-directory: infra
-
-      # Inicializa Terraform sin configurar el backend remoto.
-      - run: terraform init -backend=false
-        working-directory: infra
-
-      # Valida la configuración de Terraform.
-      - run: terraform validate
-        working-directory: infra
-
-  # Solo despliega en una ejecución manual:
-  # apply corre directamente; destroy exige escribir exactamente DESTROY.
-  deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.operation == 'apply' || (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY')) }}
-    needs: validate
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write # Habilita OIDC para asumir el rol de AWS sin credenciales estáticas.
-      contents: read
-    concurrency:
-      group: terraform-lab-dev # Evita ejecuciones simultáneas de este laboratorio.
-      cancel-in-progress: false # No cancela una ejecución que ya está en curso.
     defaults:
       run:
         working-directory: infra
@@ -73,29 +48,60 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: '1.10.5'
+          terraform_version: ${{ env.TF_VERSION }}
 
-      # Asume en AWS el rol indicado en el secret del repositorio/organización.
-      - uses: aws-actions/configure-aws-credentials@v4
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  # ----------------------------- Plan / apply / destroy con OIDC
+  deploy:
+    needs: validate
+    if: >-
+      github.ref == 'refs/heads/develop_20oct26_santalucia' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' &&
+        (inputs.operation == 'plan' || inputs.operation == 'apply' ||
+         (inputs.operation == 'destroy' && inputs.confirmation == 'DESTROY'))))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC: credenciales temporales, sin claves guardadas
+      contents: read
+    concurrency:
+      group: terraform-devops-clase11-santalucia # un solo run a la vez sobre el estado
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          terraform_version: ${{ env.TF_VERSION }}
 
-      # Inicializa el backend remoto usando el bucket configurado como secret.
+      - name: Credenciales AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.SANTALUCIA_CLASE11_ROLE_ARN }}
+          role-session-name: DevOPS_Clase11-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Init remoto
-        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="region=us-east-1"
+        run: >-
+          terraform init
+          -backend-config="bucket=${{ vars.SANTALUCIA_CLASE11_STATE_BUCKET }}"
+          -backend-config="region=${{ env.AWS_REGION }}"
 
-      # Genera y guarda el plan; destroy agrega -destroy al plan.
+      # destroy agrega -destroy al plan
       - name: Plan
-        env:
-          TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME }}
-          TF_VAR_http_cidr: ${{ vars.LAB_HTTP_CIDR }}
-        run: terraform plan -out=tfplan ${{ github.event.inputs.operation == 'destroy' && '-destroy' || '' }}
+        run: terraform plan -input=false -out=tfplan ${{ inputs.operation == 'destroy' && '-destroy' || '' }}
 
-      # Aplica exactamente el plan guardado, sin pedir confirmación interactiva.
-      # Para destroy, la condición del job exige la confirmación DESTROY.
+      # Aplica exactamente el plan guardado (se omite si la operacion es "plan")
       - name: Apply del plan
-        env:
-          TF_VAR_bucket_name: ${{ vars.LAB_BUCKET_NAME }}
-          TF_VAR_http_cidr: ${{ vars.LAB_HTTP_CIDR }}
-        run: terraform apply -auto-approve tfplan
+        if: ${{ inputs.operation != 'plan' }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Outputs
+        if: ${{ inputs.operation != 'plan' && inputs.operation != 'destroy' }}
+        run: terraform output
